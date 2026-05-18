@@ -13,7 +13,7 @@ export async function getMarketPrice(symbol: string, assetType: AssetType): Prom
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.price
   }
-
+// try
   let price = 0
 
   try {
