@@ -91,6 +91,9 @@ function LoginForm() {
       if (error) {
         setError(error.message)
         setLoading(false)
+      } else if (data?.session) {
+        // If email confirmation is disabled, user is immediately logged in
+        window.location.href = '/'
       } else {
         setSubmitted(true)
         setLoading(false)
