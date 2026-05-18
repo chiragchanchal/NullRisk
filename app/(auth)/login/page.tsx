@@ -3,13 +3,14 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { TrendingUp, Mail, ArrowRight, CheckCircle2, Lock } from 'lucide-react'
+import { TrendingUp, Mail, ArrowRight, CheckCircle2, Lock, Terminal } from 'lucide-react'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [usePassword, setUsePassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [devLoading, setDevLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
@@ -56,6 +57,41 @@ function LoginForm() {
         setSubmitted(true)
         setLoading(false)
       }
+    }
+  }
+
+  const handleDevBypass = async () => {
+    if (!email) {
+      setError('Please enter your email address first')
+      return
+    }
+    setDevLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/auth/dev-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Bypass failed')
+      }
+      
+      // Successfully seeded/updated user. Now sign them in with password123!
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: 'password123',
+      })
+
+      if (signInError) {
+        throw signInError
+      }
+
+      window.location.href = '/'
+    } catch (err: any) {
+      setError(err.message || 'Bypass failed. Please check your Supabase Service Role Key.')
+      setDevLoading(false)
     }
   }
 
@@ -163,6 +199,24 @@ function LoginForm() {
                   {usePassword ? 'Or sign in with Magic Link instead' : 'Or sign in with Password instead'}
                 </button>
               </div>
+
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-border"></div>
+                <span className="flex-shrink mx-4 text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                  Dev Mode Only
+                </span>
+                <div className="flex-grow border-t border-border"></div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDevBypass}
+                disabled={devLoading || !email}
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-semibold ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-gain/30 bg-gain/10 text-gain hover:bg-gain/20 active:scale-[0.98] h-9 px-4 w-full"
+              >
+                <Terminal className="mr-2 h-3.5 w-3.5" />
+                {devLoading ? 'Seeding and logging in...' : 'Instant Dev Bypass (No Email Needed)'}
+              </button>
             </form>
           </div>
         )}
