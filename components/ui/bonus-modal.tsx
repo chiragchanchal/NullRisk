@@ -20,7 +20,7 @@ export function BonusModal() {
       if (!user) return
 
       channel = supabase
-        .channel('bonus_inserts')
+        .channel(`bonus_inserts_${Math.random().toString(36).substring(7)}`)
         .on(
           'postgres_changes',
           {

@@ -61,8 +61,13 @@ export default function LeaderboardPage() {
     return <div className="flex items-center justify-center h-64">Loading Leaderboard...</div>
   }
 
-  if (error || !leaderboard) {
-    return <div className="p-6 text-loss bg-loss/10 rounded-xl">Failed to load leaderboard.</div>
+  if (error || !leaderboard || leaderboard.error || !Array.isArray(leaderboard)) {
+    return (
+      <div className="p-6 text-loss bg-loss/10 border border-loss/20 rounded-xl">
+        <h3 className="font-bold text-lg mb-1">Failed to load leaderboard</h3>
+        <p className="text-sm opacity-90">{error?.message || leaderboard?.error || 'Invalid leaderboard data received from the server.'}</p>
+      </div>
+    )
   }
 
   return (

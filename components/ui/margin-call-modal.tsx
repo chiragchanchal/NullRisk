@@ -46,7 +46,7 @@ export function MarginCallModal() {
       if (!user) return
 
       channel = supabase
-        .channel('margin_liquidation_alerts')
+        .channel(`margin_liquidation_alerts_${Math.random().toString(36).substring(7)}`)
         .on(
           'postgres_changes',
           {

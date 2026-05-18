@@ -19,6 +19,16 @@ const POPULAR_ASSETS = [
   { symbol: 'GBP/USD', name: 'British Pound / US Dollar', type: 'forex' }
 ]
 
+const getStableMockChange = (symbol: string) => {
+  let hash = 0
+  for (let i = 0; i < symbol.length; i++) {
+    hash = symbol.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  // Map hash to a value between -5.0 and +5.0
+  const pct = ((Math.abs(hash) % 1000) / 100) - 5
+  return pct === 0 ? 1.25 : pct
+}
+
 export default function MarketExplorer() {
   const router = useRouter()
   const [search, setSearch] = useState('')
@@ -109,8 +119,8 @@ export default function MarketExplorer() {
           <tbody>
             {filteredAssets.map((asset) => {
               const price = prices[asset.symbol]
-              // Mocking a random 24h change for the MVP since /quote doesn't return it yet
-              const mockChange = (Math.random() * 5 * (Math.random() > 0.5 ? 1 : -1))
+              // Deterministic stable mock change to prevent hydration errors
+              const mockChange = getStableMockChange(asset.symbol)
               const isPositive = mockChange >= 0
 
               return (
