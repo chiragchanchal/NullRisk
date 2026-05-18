@@ -125,9 +125,52 @@ CREATE POLICY "Users can view AI analysis cache" ON public.ai_analysis_cache FOR
 -- 4. Create trigger to seed initial balance on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_username TEXT;
+    v_raw_name TEXT;
 BEGIN
+    -- Extract full name or name if available in oauth metadata
+    v_raw_name := COALESCE(
+        new.raw_user_meta_data->>'full_name',
+        new.raw_user_meta_data->>'name',
+        new.raw_user_meta_data->>'preferred_username'
+    );
+    
+    IF v_raw_name IS NOT NULL THEN
+        -- Replace spaces and special characters with underscores, lowercase it
+        v_username := lower(regexp_replace(v_raw_name, '[^a-zA-Z0-9]', '_', 'g'));
+        -- Trim multiple consecutive underscores
+        v_username := regexp_replace(v_username, '_+', '_', 'g');
+        v_username := rtrim(ltrim(v_username, '_'), '_');
+    ELSE
+        -- Fallback to local part of the email address
+        v_username := lower(split_part(new.email, '@', 1));
+        v_username := regexp_replace(v_username, '[^a-zA-Z0-9]', '_', 'g');
+    END IF;
+
+    -- Ensure the username has minimum length and isn't too long
+    IF v_username IS NULL OR length(v_username) < 3 THEN
+        v_username := 'user_' || substr(new.id::text, 1, 8);
+    END IF;
+
+    IF length(v_username) > 20 THEN
+        v_username := substr(v_username, 1, 16);
+    END IF;
+
+    -- Handle potential duplicate usernames by suffixing random numbers/id
+    IF EXISTS (SELECT 1 FROM public.profiles WHERE username = v_username) THEN
+        v_username := substr(v_username, 1, 15) || '_' || substr(new.id::text, 1, 4);
+    END IF;
+
     INSERT INTO public.profiles (id, email, username, mock_balance, initial_balance, weekly_start_balance)
-    VALUES (new.id, new.email, 'user_' || substr(new.id::text, 1, 8), 500000, 500000, 500000);
+    VALUES (
+        new.id, 
+        new.email, 
+        v_username, 
+        500000, 
+        500000, 
+        500000
+    );
     RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
