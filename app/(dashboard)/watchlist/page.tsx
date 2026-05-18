@@ -129,8 +129,8 @@ export default function WatchlistPage() {
             </div>
           </div>
 
-          <div className="border border-border rounded-xl bg-card overflow-hidden">
-            <table className="w-full text-sm text-left">
+          <div className="border border-border rounded-xl bg-card overflow-x-auto">
+            <table className="w-full text-sm text-left min-w-[600px] sm:min-w-0">
               <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                 <tr>
                   <th className="px-6 py-4 font-medium">Asset</th>

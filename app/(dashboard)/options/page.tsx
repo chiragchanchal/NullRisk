@@ -377,7 +377,7 @@ export default function OptionsPage() {
           {strikes.length > 0 && (
             <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5">
               <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block mb-3">Strike Price Chain</label>
-              <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-11 gap-2">
+              <div className="flex gap-2 overflow-x-auto pb-2 snap-x scrollbar-thin">
                 {strikes.map(strike => {
                   const isSelected = selectedStrike === strike
                   const tol = spotPrice * 0.01
@@ -388,7 +388,7 @@ export default function OptionsPage() {
                     <button
                       key={strike}
                       onClick={() => setSelectedStrike(strike)}
-                      className={`py-2 px-1 text-xs font-bold rounded-lg border transition-all text-center ${
+                      className={`py-2 px-3 text-xs font-bold rounded-lg border transition-all text-center snap-center shrink-0 min-w-[75px] ${
                         isSelected
                           ? optionType === 'call'
                             ? 'bg-green-900 border-green-600 text-green-200'
@@ -403,6 +403,7 @@ export default function OptionsPage() {
                       <div>{strike}</div>
                       {isATM && <div className="text-[8px] text-yellow-400 font-black">ATM</div>}
                       {isITM && !isATM && <div className="text-[8px] text-green-500">ITM</div>}
+                      {!isATM && !isITM && <div className="text-[8px] opacity-0">-</div>}
                     </button>
                   )
                 })}
