@@ -192,14 +192,16 @@ export default function PortfolioPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {openPositions.map((pos: any) => {
                 const isProfit = pos.unrealisedPnL >= 0
-                const dangerPct = pos.lossAsCollateralPct * 100
+                const marginRatio = pos.marginRatio || 0
+                const liquidationPrice = pos.liquidationPrice || 0
+                const leverage = pos.leverage_ratio || 2
 
                 return (
                   <motion.div
                     key={pos.id}
                     layout
-                    className={`border rounded-xl p-5 relative ${
-                      dangerPct > 60 ? 'border-loss/50 bg-loss/5' : 'border-yellow-500/30 bg-yellow-500/5'
+                    className={`border rounded-xl p-5 relative transition-colors ${
+                      marginRatio >= 70 ? 'border-loss/50 bg-loss/5' : 'border-yellow-500/30 bg-yellow-500/5'
                     }`}
                   >
                     {/* Close button */}
@@ -216,7 +218,7 @@ export default function PortfolioPage() {
                     <div className="flex items-start justify-between mb-3 pr-6">
                       <div>
                         <h4 className="font-bold text-lg">{pos.symbol}</h4>
-                        <p className="text-xs text-muted-foreground uppercase">{pos.asset_type} · 2x Leverage</p>
+                        <p className="text-xs text-muted-foreground uppercase">{pos.asset_type} · {leverage}x Leverage</p>
                       </div>
                       <div className={`px-2.5 py-1 rounded-md text-xs font-bold ${isProfit ? 'bg-gain/10 text-gain' : 'bg-loss/10 text-loss'}`}>
                         {isProfit ? '+' : ''}{pos.unrealisedPnLPct?.toFixed(2)}%
@@ -242,26 +244,35 @@ export default function PortfolioPage() {
                         <span className="text-muted-foreground">Collateral</span>
                         <span className="font-mono">{formatCurrency(pos.collateral_amount)}</span>
                       </div>
+                      <div className="flex justify-between">
+                        <span className="text-loss font-semibold">Liq. Price</span>
+                        <span className="font-mono text-loss font-bold">{formatCurrency(liquidationPrice)}</span>
+                      </div>
                     </div>
 
-                    {/* Danger bar */}
-                    {dangerPct > 0 && (
-                      <div className="mt-3">
-                        <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                          <span>Collateral consumed</span>
-                          <span className={dangerPct > 60 ? 'text-loss font-bold' : ''}>{dangerPct.toFixed(1)}%</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{
-                              width: `${Math.min(100, dangerPct)}%`,
-                              backgroundColor: dangerPct > 60 ? '#FF4D4D' : '#f59e0b'
-                            }}
-                          />
-                        </div>
+                    {/* Binance-style Margin Ratio bar */}
+                    <div className="mt-4 pt-3 border-t border-border/50">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Margin Ratio</span>
+                        <span className={`font-mono font-bold ${
+                          marginRatio >= 90 ? 'text-loss' :
+                          marginRatio >= 70 ? 'text-orange-500' :
+                          marginRatio >= 30 ? 'text-yellow-400' : 'text-gain'
+                        }`}>{marginRatio.toFixed(1)}%</span>
                       </div>
-                    )}
+                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${Math.min(100, marginRatio)}%`,
+                            backgroundColor:
+                              marginRatio >= 90 ? '#FF4D4D' :
+                              marginRatio >= 70 ? '#f97316' :
+                              marginRatio >= 30 ? '#eab308' : '#00C896'
+                          }}
+                        />
+                      </div>
+                    </div>
                   </motion.div>
                 )
               })}

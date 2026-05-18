@@ -3,11 +3,9 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Bell, Search, Settings } from 'lucide-react'
-import { SettingsModal } from '@/components/ui/settings-modal'
 
 export function Topbar() {
   const [balance, setBalance] = useState<number | null>(null)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -58,7 +56,7 @@ export function Topbar() {
         </div>
         
         <button
-          onClick={() => setIsSettingsOpen(true)}
+          onClick={() => window.dispatchEvent(new Event('open-settings'))}
           className="md:hidden p-1.5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
         >
           <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -69,7 +67,7 @@ export function Topbar() {
           <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-primary ring-1.5 ring-card" />
         </button>
       </div>
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </header>
   )
 }
+

@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getMarketPrice, AssetType } from '@/lib/api/market'
 
-const MARGIN_CALL_THRESHOLD = 0.8 // 80% of collateral lost → trigger margin call
+function getMMR(leverage: number): number {
+  if (leverage >= 50) return 0.01
+  if (leverage >= 25) return 0.02
+  if (leverage >= 10) return 0.05
+  if (leverage >= 5) return 0.10
+  return 0.15
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -33,21 +39,59 @@ export async function GET(req: NextRequest) {
         const totalInvested = pos.collateral_amount + pos.margin_amount
         const unrealisedPnL = currentValue - totalInvested
         const unrealisedPnLPct = (unrealisedPnL / totalInvested) * 100
-        const lossAsCollateralPct = Math.abs(Math.min(0, unrealisedPnL)) / pos.collateral_amount
 
         totalExposure += pos.margin_amount
         totalCollateral += pos.collateral_amount
 
-        const isMarginCall = unrealisedPnL < 0 && lossAsCollateralPct >= MARGIN_CALL_THRESHOLD
+        // Binance-Style Calculations
+        const mm = getMMR(pos.leverage_ratio)
+        const marginBalance = pos.collateral_amount + unrealisedPnL
+        const maintenanceMargin = currentValue * mm
+        
+        // Margin Ratio: (Maintenance Margin / Margin Balance) * 100. If >= 100%, liquidate.
+        const marginRatio = marginBalance > 0 ? (maintenanceMargin / marginBalance) * 100 : 100
+        
+        // Precise Liquidation Price: (EntryPrice * Qty - Collateral) / (Qty * (1 - MMR))
+        const liquidationPrice = Math.max(0, (pos.entry_price * pos.quantity - pos.collateral_amount) / (pos.quantity * (1 - mm)))
+
+        const isMarginCall = marginBalance <= maintenanceMargin
 
         if (isMarginCall) {
-          // Auto-liquidate via API call (calling close route with forceClose=true)
-          await supabase.rpc('liquidate_margin_position', {
-            p_position_id: pos.id,
-            p_user_id: user.id,
-            p_close_price: currentPrice
-          })
-          marginCallPositions.push({ ...pos, currentPrice, unrealisedPnL })
+          // Auto-liquidate via API call
+          try {
+            await supabase.rpc('liquidate_margin_position', {
+              p_position_id: pos.id,
+              p_user_id: user.id,
+              p_close_price: currentPrice
+            })
+          } catch (rpcErr) {
+            console.error('RPC liquidation failed, falling back to manual update:', rpcErr)
+            // Manual fallback: close the position and set status to liquidated
+            await supabase
+              .from('margin_positions')
+              .update({
+                status: 'liquidated',
+                closed_at: new Date().toISOString(),
+                close_price: currentPrice
+              })
+              .eq('id', pos.id)
+            
+            // Refund any remaining collateral (marginBalance) if > 0
+            if (marginBalance > 0) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('mock_balance')
+                .eq('id', user.id)
+                .single()
+              if (profile) {
+                await supabase
+                  .from('profiles')
+                  .update({ mock_balance: profile.mock_balance + marginBalance })
+                  .eq('id', user.id)
+              }
+            }
+          }
+          marginCallPositions.push({ ...pos, currentPrice, unrealisedPnL, liquidationPrice, marginRatio })
         }
 
         return {
@@ -56,7 +100,10 @@ export async function GET(req: NextRequest) {
           currentValue,
           unrealisedPnL,
           unrealisedPnLPct,
-          lossAsCollateralPct,
+          marginBalance,
+          maintenanceMargin,
+          marginRatio,
+          liquidationPrice,
           isMarginCall
         }
       })
@@ -78,3 +125,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 })
   }
 }
+

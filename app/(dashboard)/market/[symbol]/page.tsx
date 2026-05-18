@@ -20,6 +20,7 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
   const [orderType, setOrderType] = useState<'buy' | 'sell'>('buy')
   const [orderClass, setOrderClass] = useState<'market' | 'limit'>('market')
   const [isMarginMode, setIsMarginMode] = useState(false)
+  const [leverage, setLeverage] = useState<number>(2)
   const [quantity, setQuantity] = useState('1')
   const [limitPrice, setLimitPrice] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -83,7 +84,7 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
     try {
       const endpoint = isMarginMode ? '/api/margin/open' : '/api/trade/execute'
       const body = isMarginMode
-        ? { symbol, assetType, quantity: parseFloat(quantity) }
+        ? { symbol, assetType, quantity: parseFloat(quantity), leverage }
         : {
             symbol, assetType,
             quantity: parseFloat(quantity),
@@ -116,8 +117,9 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
   const qty = parseFloat(quantity) || 0
   const execPrice = orderClass === 'limit' && limitPrice ? parseFloat(limitPrice) : currentPrice
   const estimatedTotal = qty * execPrice
-  // In margin mode, user only puts up 50% collateral
-  const collateralRequired = isMarginMode ? estimatedTotal / 2 : estimatedTotal
+  // In margin mode, user collateral = estimatedTotal / leverage
+  const collateralRequired = isMarginMode ? estimatedTotal / leverage : estimatedTotal
+  const borrowedAmount = isMarginMode ? estimatedTotal - collateralRequired : 0
   const buyingPower = currentPrice > 0 ? estimatedTotal : 0
 
   return (
@@ -203,7 +205,7 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Zap className={`h-4 w-4 ${isMarginMode ? 'text-yellow-400' : 'text-muted-foreground'}`} />
-                    <span className="text-sm font-semibold">Margin Mode (2x)</span>
+                    <span className="text-sm font-semibold">Margin Mode</span>
                   </div>
                   <button
                     type="button"
@@ -220,14 +222,35 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
                 </div>
                 <AnimatePresence>
                   {isMarginMode && (
-                    <motion.p
+                    <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="text-xs text-yellow-400/80 mt-2 overflow-hidden"
+                      className="mt-3 space-y-3 overflow-hidden"
                     >
-                      2x leverage: Your ₹{(collateralRequired).toLocaleString('en-IN', { maximumFractionDigits: 0 })} collateral controls ₹{buyingPower.toLocaleString('en-IN', { maximumFractionDigits: 0 })} buying power. 0.05% daily interest applies.
-                    </motion.p>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-yellow-500/80 uppercase tracking-wider">Leverage</label>
+                        <div className="grid grid-cols-5 gap-1 bg-muted/50 p-0.5 rounded-lg border border-border/50">
+                          {[2, 5, 10, 25, 50].map((level) => (
+                            <button
+                              key={level}
+                              type="button"
+                              onClick={() => setLeverage(level)}
+                              className={`py-1 text-xs font-mono font-bold rounded transition-all ${
+                                leverage === level
+                                  ? 'bg-yellow-500 text-black shadow-sm scale-[1.03]'
+                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                              }`}
+                            >
+                              {level}x
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-xs text-yellow-400/80">
+                        {leverage}x leverage: Your ₹{(collateralRequired).toLocaleString('en-IN', { maximumFractionDigits: 0 })} collateral controls ₹{buyingPower.toLocaleString('en-IN', { maximumFractionDigits: 0 })} buying power. 0.05% daily interest applies.
+                      </p>
+                    </motion.div>
                   )}
                 </AnimatePresence>
               </motion.div>
@@ -270,12 +293,12 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
                       <span className="font-mono font-bold">₹{estimatedTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Your Collateral (50%)</span>
+                      <span className="text-muted-foreground">Your Collateral ({Math.round(100 / leverage)}%)</span>
                       <span className="font-mono font-bold text-yellow-400">₹{collateralRequired.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Borrowed (50%)</span>
-                      <span className="font-mono text-muted-foreground">₹{(estimatedTotal / 2).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span className="text-muted-foreground">Borrowed ({Math.round(100 - (100 / leverage))}%)</span>
+                      <span className="font-mono text-muted-foreground">₹{borrowedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </>
                 ) : (
@@ -325,3 +348,4 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
     </div>
   )
 }
+

@@ -3,6 +3,7 @@ import { Topbar } from '@/components/layout/topbar'
 import { BonusModal } from '@/components/ui/bonus-modal'
 import { BottomNav } from '@/components/layout/bottom-nav'
 import { MarginCallModal } from '@/components/ui/margin-call-modal'
+import { SettingsListener } from '@/components/layout/settings-listener'
 
 export default function DashboardLayout({
   children,
@@ -22,7 +23,9 @@ export default function DashboardLayout({
         <BonusModal />
         <MarginCallModal />
         <BottomNav />
+        <SettingsListener />
       </div>
     </div>
   )
 }
+

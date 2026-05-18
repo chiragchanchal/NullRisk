@@ -316,7 +316,7 @@ export default function OptionsPage() {
           {/* Symbol Search */}
           <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5">
             <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block mb-2">Underlying Symbol</label>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                 <input
@@ -330,7 +330,7 @@ export default function OptionsPage() {
               </div>
               <button
                 onClick={() => setSymbol(symbolInput)}
-                className="h-10 px-5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold rounded-md transition-colors"
+                className="h-10 sm:px-5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold rounded-md transition-colors w-full sm:w-auto"
               >
                 Load
               </button>
@@ -375,9 +375,12 @@ export default function OptionsPage() {
 
           {/* Strike Chain */}
           {strikes.length > 0 && (
-            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5">
-              <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block mb-3">Strike Price Chain</label>
-              <div className="flex gap-2 overflow-x-auto pb-2 snap-x scrollbar-thin">
+            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5 relative overflow-hidden">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">Strike Price Chain</label>
+                <span className="text-[9px] text-zinc-500 font-bold block sm:hidden uppercase tracking-wider">Swipe Left/Right ↔</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2 snap-x scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 {strikes.map(strike => {
                   const isSelected = selectedStrike === strike
                   const tol = spotPrice * 0.01
@@ -388,22 +391,22 @@ export default function OptionsPage() {
                     <button
                       key={strike}
                       onClick={() => setSelectedStrike(strike)}
-                      className={`py-2 px-3 text-xs font-bold rounded-lg border transition-all text-center snap-center shrink-0 min-w-[75px] ${
+                      className={`py-2 px-3 text-xs font-bold rounded-lg border transition-all text-center snap-center shrink-0 min-w-[85px] ${
                         isSelected
                           ? optionType === 'call'
-                            ? 'bg-green-900 border-green-600 text-green-200'
-                            : 'bg-red-900 border-red-600 text-red-200'
+                            ? 'bg-green-900 border-green-600 text-green-200 shadow-md scale-105'
+                            : 'bg-red-900 border-red-600 text-red-200 shadow-md scale-105'
                           : isATM
                           ? 'border-yellow-700 bg-yellow-900/30 text-yellow-300'
                           : isITM
-                          ? 'border-zinc-600 bg-zinc-800 text-zinc-200'
-                          : 'border-zinc-800 bg-zinc-900 text-zinc-500'
+                          ? 'border-zinc-600 bg-zinc-800 text-zinc-200 hover:border-zinc-500'
+                          : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:border-zinc-700'
                       }`}
                     >
                       <div>{strike}</div>
                       {isATM && <div className="text-[8px] text-yellow-400 font-black">ATM</div>}
-                      {isITM && !isATM && <div className="text-[8px] text-green-500">ITM</div>}
-                      {!isATM && !isITM && <div className="text-[8px] opacity-0">-</div>}
+                      {isITM && !isATM && <div className="text-[8px] text-green-500 font-black">ITM</div>}
+                      {!isATM && !isITM && <div className="text-[8px] opacity-40">OTM</div>}
                     </button>
                   )
                 })}
@@ -414,7 +417,7 @@ export default function OptionsPage() {
           {/* Expiry Selector */}
           <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5">
             <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block mb-3">Expiry Date</label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {expiryDates.map(exp => (
                 <button
                   key={exp.label}
