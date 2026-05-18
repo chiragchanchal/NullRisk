@@ -61,37 +61,66 @@ CREATE TABLE IF NOT EXISTS public.bonus_events (
     UNIQUE(user_id, milestone_pct)
 );
 
+-- AI Analysis Cache Table
+CREATE TABLE IF NOT EXISTS public.ai_analysis_cache (
+    symbol TEXT PRIMARY KEY,
+    analysis TEXT NOT NULL,
+    rsi NUMERIC,
+    price_change_14d NUMERIC,
+    headlines TEXT[],
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- 2. Enable Row Level Security (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.holdings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.watchlist ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bonus_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_analysis_cache ENABLE ROW LEVEL SECURITY;
 
 -- 3. Create RLS Policies
 -- Profiles: Users can view and update their own profile
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
 -- Holdings: Users can CRUD their own holdings
+DROP POLICY IF EXISTS "Users can view own holdings" ON public.holdings;
+DROP POLICY IF EXISTS "Users can insert own holdings" ON public.holdings;
+DROP POLICY IF EXISTS "Users can update own holdings" ON public.holdings;
+DROP POLICY IF EXISTS "Users can delete own holdings" ON public.holdings;
 CREATE POLICY "Users can view own holdings" ON public.holdings FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own holdings" ON public.holdings FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own holdings" ON public.holdings FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own holdings" ON public.holdings FOR DELETE USING (auth.uid() = user_id);
 
 -- Transactions: Users can CRUD their own transactions
+DROP POLICY IF EXISTS "Users can view own transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Users can insert own transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Users can update own transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Users can delete own transactions" ON public.transactions;
 CREATE POLICY "Users can view own transactions" ON public.transactions FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own transactions" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own transactions" ON public.transactions FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own transactions" ON public.transactions FOR DELETE USING (auth.uid() = user_id);
 
 -- Watchlist: Users can CRUD their own watchlist
+DROP POLICY IF EXISTS "Users can view own watchlist" ON public.watchlist;
+DROP POLICY IF EXISTS "Users can insert own watchlist" ON public.watchlist;
+DROP POLICY IF EXISTS "Users can delete own watchlist" ON public.watchlist;
 CREATE POLICY "Users can view own watchlist" ON public.watchlist FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own watchlist" ON public.watchlist FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can delete own watchlist" ON public.watchlist FOR DELETE USING (auth.uid() = user_id);
 
 -- Bonus Events: Users can view own bonus events
+DROP POLICY IF EXISTS "Users can view own bonus events" ON public.bonus_events;
 CREATE POLICY "Users can view own bonus events" ON public.bonus_events FOR SELECT USING (auth.uid() = user_id);
+
+-- AI Analysis Cache: Users can view AI analysis cache
+DROP POLICY IF EXISTS "Users can view AI analysis cache" ON public.ai_analysis_cache;
+CREATE POLICY "Users can view AI analysis cache" ON public.ai_analysis_cache FOR SELECT USING (true);
 
 -- 4. Create trigger to seed initial balance on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -103,6 +132,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
@@ -218,6 +248,9 @@ CREATE TABLE IF NOT EXISTS public.margin_positions (
 );
 
 ALTER TABLE public.margin_positions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own margin positions" ON public.margin_positions;
+DROP POLICY IF EXISTS "Users can insert own margin positions" ON public.margin_positions;
+DROP POLICY IF EXISTS "Users can update own margin positions" ON public.margin_positions;
 CREATE POLICY "Users can view own margin positions" ON public.margin_positions FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own margin positions" ON public.margin_positions FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own margin positions" ON public.margin_positions FOR UPDATE USING (auth.uid() = user_id);
@@ -340,6 +373,9 @@ CREATE TABLE IF NOT EXISTS public.options_positions (
 );
 
 ALTER TABLE public.options_positions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view own options" ON public.options_positions;
+DROP POLICY IF EXISTS "Users can insert own options" ON public.options_positions;
+DROP POLICY IF EXISTS "Users can update own options" ON public.options_positions;
 CREATE POLICY "Users can view own options" ON public.options_positions FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own options" ON public.options_positions FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own options" ON public.options_positions FOR UPDATE USING (auth.uid() = user_id);
@@ -391,23 +427,4 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Schedule daily at 16:00 UTC (after US market close)
 SELECT cron.schedule('options-daily-settlement', '0 16 * * *', 'SELECT public.settle_expired_options()');
 
--- ==========================================
--- AI ANALYST CACHE
--- ==========================================
-
--- 15. AI Analysis Cache Table
--- Stores the last AI analysis per symbol. Expires after 30 minutes.
-CREATE TABLE IF NOT EXISTS public.ai_analysis_cache (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    symbol TEXT NOT NULL UNIQUE,
-    analysis TEXT NOT NULL,
-    rsi NUMERIC,
-    price_change_14d NUMERIC,
-    headlines JSONB,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- Public read (any authenticated user can read cached analysis)
-ALTER TABLE public.ai_analysis_cache ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Any user can read analysis cache" ON public.ai_analysis_cache FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Service role can upsert analysis cache" ON public.ai_analysis_cache FOR ALL USING (auth.role() = 'service_role');
+-- Note: Section 15 (AI Analysis Cache Table & Policies) is defined at the top of this file to prevent duplicate schema warnings.

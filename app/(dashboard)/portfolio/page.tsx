@@ -47,8 +47,13 @@ export default function PortfolioPage() {
     )
   }
 
-  if (error || !summary) {
-    return <div className="p-6 text-loss bg-loss/10 rounded-xl">Failed to load portfolio summary.</div>
+  if (error || !summary || summary.error) {
+    return (
+      <div className="p-6 text-loss bg-loss/10 border border-loss/20 rounded-xl max-w-xl mx-auto mt-8">
+        <h3 className="font-bold text-lg mb-1">Failed to load portfolio</h3>
+        <p className="text-sm opacity-90">{error?.message || summary?.error || 'Invalid portfolio summary data.'}</p>
+      </div>
+    )
   }
 
   const generateChartData = () => {

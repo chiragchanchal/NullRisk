@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getMarketPrice } from '@/lib/api/market'
 import { getMarketOHLC } from '@/lib/api/market'
 import { calculateBSM } from '@/lib/engine/black-scholes'
@@ -44,14 +44,39 @@ export async function POST(req: NextRequest) {
     const premiumPerShare = bsm.price
     const totalPremium = premiumPerShare * CONTRACT_SIZE * contracts
 
-    // 4. Check balance
-    const { data: profile } = await supabase
+    // 4. Check balance with self-healing auto-creation
+    let profile = null
+    const { data: fetchProfile, error: profileError } = await supabase
       .from('profiles')
       .select('mock_balance')
       .eq('id', user.id)
       .single()
 
-    if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+    if (profileError || !fetchProfile) {
+      const email = user.email || `user_${user.id.substring(0, 8)}@tradelab.com`
+      const username = `user_${user.id.substring(0, 8)}`
+
+      const adminClient = createAdminClient()
+      const { data: newProfile, error: insertError } = await adminClient
+        .from('profiles')
+        .insert({
+          id: user.id,
+          email,
+          username,
+          mock_balance: 500000,
+          initial_balance: 500000,
+          weekly_start_balance: 500000
+        })
+        .select('mock_balance')
+        .single()
+
+      if (insertError || !newProfile) {
+        return NextResponse.json({ error: `Profile not found and auto-creation failed: ${insertError?.message || profileError?.message}` }, { status: 404 })
+      }
+      profile = newProfile
+    } else {
+      profile = fetchProfile
+    }
     if (profile.mock_balance < totalPremium) {
       return NextResponse.json({
         error: `Insufficient balance. Premium required: ₹${totalPremium.toFixed(2)} for ${contracts} contract(s).`

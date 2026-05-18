@@ -104,9 +104,20 @@ function MoneynessBadge({ strike, spot, type }: { strike: number; spot: number; 
 }
 
 // ─── Position Card ────────────────────────────────────────────────────────────
-function PositionCard({ pos }: { pos: any }) {
+function PositionCard({ pos, onClose }: { pos: any; onClose?: (id: string) => Promise<void> }) {
+  const [isClosing, setIsClosing] = useState(false)
   const isProfit = pos.pnl >= 0
   const statusColor = pos.status === 'exercised' ? 'text-green-400' : pos.status === 'expired' ? 'text-zinc-500' : 'text-blue-400'
+
+  const handleClose = async () => {
+    if (!onClose) return
+    setIsClosing(true)
+    try {
+      await onClose(pos.id)
+    } finally {
+      setIsClosing(false)
+    }
+  }
 
   return (
     <motion.div
@@ -147,12 +158,28 @@ function PositionCard({ pos }: { pos: any }) {
       </div>
 
       {pos.status === 'open' && (
-        <div className="grid grid-cols-4 gap-2 text-[10px] border-t border-zinc-800 pt-2 mt-2 text-zinc-400 font-mono">
-          <div>Δ {(pos.delta || 0).toFixed(3)}</div>
-          <div>Γ {(pos.gamma || 0).toFixed(4)}</div>
-          <div>Θ {(pos.theta || 0).toFixed(4)}</div>
-          <div>ν {(pos.vega || 0).toFixed(4)}</div>
-        </div>
+        <>
+          <div className="grid grid-cols-4 gap-2 text-[10px] border-t border-zinc-800 pt-2 mt-2 text-zinc-400 font-mono">
+            <div>Δ {(pos.delta || 0).toFixed(3)}</div>
+            <div>Γ {(pos.gamma || 0).toFixed(4)}</div>
+            <div>Θ {(pos.theta || 0).toFixed(4)}</div>
+            <div>ν {(pos.vega || 0).toFixed(4)}</div>
+          </div>
+          <button
+            onClick={handleClose}
+            disabled={isClosing}
+            className="w-full mt-3 h-8 bg-red-950/40 border border-red-950/60 hover:bg-red-900/40 text-red-400 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 disabled:opacity-40"
+          >
+            {isClosing ? (
+              <>
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                CLOSING...
+              </>
+            ) : (
+              '⚡ CUT POSITION'
+            )}
+          </button>
+        </>
       )}
     </motion.div>
   )
@@ -212,6 +239,24 @@ export default function OptionsPage() {
     '/api/options/positions', fetcher, { refreshInterval: 30000 }
   )
   const positions = positionsData?.positions || []
+
+  const handleClosePosition = async (positionId: string) => {
+    try {
+      const res = await fetch('/api/options/close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ positionId })
+      })
+      if (res.ok) {
+        mutatePositions()
+      } else {
+        const err = await res.json()
+        alert(err.error || 'Failed to close position.')
+      }
+    } catch {
+      alert('An unexpected error occurred.')
+    }
+  }
 
   const handleBuy = async () => {
     if (!selectedStrike || !selectedExpiry || !symbol || !pricing) return
@@ -494,7 +539,9 @@ export default function OptionsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {positions.map((pos: any) => <PositionCard key={pos.id} pos={pos} />)}
+            {positions.map((pos: any) => (
+              <PositionCard key={pos.id} pos={pos} onClose={handleClosePosition} />
+            ))}
           </div>
         )}
       </div>

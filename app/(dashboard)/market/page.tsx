@@ -33,7 +33,44 @@ export default function MarketExplorer() {
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState<'all' | 'stock' | 'crypto' | 'forex'>('all')
+  const [watchlist, setWatchlist] = useState<string[]>([])
   const [prices, setPrices] = useState<Record<string, number>>({})
+
+  // Fetch watchlist on mount
+  useEffect(() => {
+    const fetchWatchlist = async () => {
+      try {
+        const res = await fetch('/api/watchlist')
+        const data = await res.json()
+        if (res.ok) {
+          setWatchlist(data.map((item: any) => item.symbol))
+        }
+      } catch (e) {
+        console.error('Failed to fetch watchlist:', e)
+      }
+    }
+    fetchWatchlist()
+  }, [])
+
+  const toggleWatchlist = async (symbol: string, assetType: string) => {
+    try {
+      const res = await fetch('/api/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol, assetType })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        if (data.action === 'added') {
+          setWatchlist(prev => [...prev, symbol])
+        } else {
+          setWatchlist(prev => prev.filter(s => s !== symbol))
+        }
+      }
+    } catch (e) {
+      console.error('Failed to toggle watchlist:', e)
+    }
+  }
 
   // Fetch prices for all displayed assets
   useEffect(() => {
@@ -144,8 +181,17 @@ export default function MarketExplorer() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <button className="text-muted-foreground hover:text-primary transition-colors">
-                      <Star className="h-5 w-5 mx-auto" />
+                    <button 
+                      onClick={() => toggleWatchlist(asset.symbol, asset.type)}
+                      className="text-muted-foreground hover:text-primary transition-colors p-1"
+                    >
+                      <Star 
+                        className={`h-5 w-5 mx-auto transition-all ${
+                          watchlist.includes(asset.symbol) 
+                            ? 'fill-yellow-500 text-yellow-500 scale-110' 
+                            : 'hover:scale-110'
+                        }`} 
+                      />
                     </button>
                   </td>
                   <td className="px-6 py-4 text-right">

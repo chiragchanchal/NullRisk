@@ -1,16 +1,41 @@
 import { getMarketPrice, AssetType } from '@/lib/api/market'
 import { SupabaseClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/server'
 
 export async function calculatePortfolioValue(supabase: SupabaseClient, userId: string) {
-  // 1. Get user profile for balances
-  const { data: profile, error: profileError } = await supabase
+  // 1. Get user profile for balances with self-healing auto-creation
+  let profile = null
+  const { data: fetchProfile, error: profileError } = await supabase
     .from('profiles')
     .select('mock_balance, initial_balance')
     .eq('id', userId)
     .single()
 
-  if (profileError || !profile) {
-    throw new Error('User profile not found')
+  if (profileError || !fetchProfile) {
+    const { data: { user } } = await supabase.auth.getUser()
+    const email = user?.email || `user_${userId.substring(0, 8)}@tradelab.com`
+    const username = `user_${userId.substring(0, 8)}`
+
+    const adminClient = createAdminClient()
+    const { data: newProfile, error: insertError } = await adminClient
+      .from('profiles')
+      .insert({
+        id: userId,
+        email,
+        username,
+        mock_balance: 500000,
+        initial_balance: 500000,
+        weekly_start_balance: 500000
+      })
+      .select('mock_balance, initial_balance')
+      .single()
+
+    if (insertError || !newProfile) {
+      throw new Error('User profile not found and auto-creation failed: ' + (insertError?.message || profileError?.message))
+    }
+    profile = newProfile
+  } else {
+    profile = fetchProfile
   }
 
   // 2. Get user holdings
