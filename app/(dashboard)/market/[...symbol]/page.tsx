@@ -10,9 +10,11 @@ import { AIAnalystCard } from '@/components/ui/ai-analyst-card'
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
-export default function AssetDetail({ params }: { params: Promise<{ symbol: string }> }) {
+export default function AssetDetail({ params }: { params: Promise<{ symbol: string[] }> }) {
   const resolvedParams = use(params)
-  const symbol = decodeURIComponent(resolvedParams.symbol)
+  const symbol = Array.isArray(resolvedParams.symbol)
+    ? resolvedParams.symbol.map(decodeURIComponent).join('/')
+    : decodeURIComponent(resolvedParams.symbol || '')
   const searchParams = useSearchParams()
   const assetType = searchParams.get('type') || 'stock'
   const router = useRouter()
