@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Search, TrendingUp, TrendingDown, AlertTriangle, RefreshCw } from 'lucide-react'
 import useSWR from 'swr'
 import { generateStrikes, getExpiryDates } from '@/lib/engine/black-scholes'
+import { AssetLogo } from '@/components/ui/asset-logo'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -127,7 +128,8 @@ function PositionCard({ pos, onClose }: { pos: any; onClose?: (id: string) => Pr
     >
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
+            <AssetLogo symbol={pos.symbol} type="stock" size={28} />
             <span className="font-black text-white">{pos.symbol}</span>
             <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
               pos.option_type === 'call' ? 'bg-green-900/60 text-green-300' : 'bg-red-900/60 text-red-300'

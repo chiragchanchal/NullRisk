@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Star, TrendingUp, TrendingDown, ArrowRight, RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { AssetLogo } from '@/components/ui/asset-logo'
 
 interface WatchlistItem {
   id: string
@@ -155,7 +156,10 @@ export default function WatchlistPage() {
                         className="border-b border-border hover:bg-muted/50 transition-colors"
                       >
                         <td className="px-6 py-4">
-                          <div className="font-bold text-foreground">{item.symbol}</div>
+                          <div className="flex items-center gap-3">
+                            <AssetLogo symbol={item.symbol} type={item.asset_type} size={36} />
+                            <div className="font-bold text-foreground">{item.symbol}</div>
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary capitalize">

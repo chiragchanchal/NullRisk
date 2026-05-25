@@ -7,6 +7,7 @@ import { createChart, ColorType, CandlestickSeries, UTCTimestamp } from 'lightwe
 import { ArrowLeft, Clock, AlertTriangle, Zap } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AIAnalystCard } from '@/components/ui/ai-analyst-card'
+import { AssetLogo } from '@/components/ui/asset-logo'
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
@@ -137,9 +138,12 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
         {/* Left: Chart + News */}
         <div className="flex-1 space-y-6">
           <div className="flex items-end justify-between">
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight">{symbol}</h1>
-              <p className="text-muted-foreground uppercase">{assetType}</p>
+            <div className="flex items-center gap-4">
+              <AssetLogo symbol={symbol} type={assetType} size={48} />
+              <div>
+                <h1 className="text-4xl font-bold tracking-tight leading-tight">{symbol}</h1>
+                <p className="text-muted-foreground uppercase">{assetType}</p>
+              </div>
             </div>
             <div className="text-right">
               <div className="text-3xl font-bold font-mono">

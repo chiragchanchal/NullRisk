@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Star, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react'
+import { AssetLogo } from '@/components/ui/asset-logo'
 
 // Comprehensive 150 assets list (50 Stocks, 50 Cryptocurrencies, 50 Forex pairs)
 const POPULAR_ASSETS = [
@@ -325,8 +326,13 @@ export default function MarketExplorer() {
               return (
                 <tr key={asset.symbol} className="border-b border-border hover:bg-muted/50 transition-colors">
                   <td className="px-6 py-4">
-                    <div className="font-bold text-foreground">{asset.symbol}</div>
-                    <div className="text-xs text-muted-foreground">{asset.name}</div>
+                    <div className="flex items-center gap-3">
+                      <AssetLogo symbol={asset.symbol} type={asset.type} size={36} />
+                      <div>
+                        <div className="font-bold text-foreground">{asset.symbol}</div>
+                        <div className="text-xs text-muted-foreground">{asset.name}</div>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary capitalize">

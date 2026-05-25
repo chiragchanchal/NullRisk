@@ -6,6 +6,7 @@ import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip } from 'recharts'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
+import { AssetLogo } from '@/components/ui/asset-logo'
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
@@ -216,9 +217,12 @@ export default function PortfolioPage() {
                     </button>
 
                     <div className="flex items-start justify-between mb-3 pr-6">
-                      <div>
-                        <h4 className="font-bold text-lg">{pos.symbol}</h4>
-                        <p className="text-xs text-muted-foreground uppercase">{pos.asset_type} · {leverage}x Leverage</p>
+                      <div className="flex items-center gap-3">
+                        <AssetLogo symbol={pos.symbol} type={pos.asset_type} size={40} />
+                        <div>
+                          <h4 className="font-bold text-lg leading-tight">{pos.symbol}</h4>
+                          <p className="text-xs text-muted-foreground uppercase">{pos.asset_type} · {leverage}x Leverage</p>
+                        </div>
                       </div>
                       <div className={`px-2.5 py-1 rounded-md text-xs font-bold ${isProfit ? 'bg-gain/10 text-gain' : 'bg-loss/10 text-loss'}`}>
                         {isProfit ? '+' : ''}{pos.unrealisedPnLPct?.toFixed(2)}%
@@ -301,9 +305,12 @@ export default function PortfolioPage() {
                   className="border border-border bg-card hover:bg-muted/30 transition-colors rounded-xl p-5 cursor-pointer"
                 >
                   <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h4 className="font-bold text-lg">{holding.symbol}</h4>
-                      <p className="text-xs text-muted-foreground uppercase">{holding.asset_type}</p>
+                    <div className="flex items-center gap-3">
+                      <AssetLogo symbol={holding.symbol} type={holding.asset_type} size={40} />
+                      <div>
+                        <h4 className="font-bold text-lg leading-tight">{holding.symbol}</h4>
+                        <p className="text-xs text-muted-foreground uppercase">{holding.asset_type}</p>
+                      </div>
                     </div>
                     <div className={`px-2.5 py-1 rounded-md text-xs font-bold ${isPositive ? 'bg-gain/10 text-gain' : 'bg-loss/10 text-loss'}`}>
                       {isPositive ? '+' : ''}{holding.unrealisedPnLPct.toFixed(2)}%
