@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getMarketPrice, AssetType } from '@/lib/api/market'
 
 export async function POST(req: NextRequest) {
@@ -53,9 +53,10 @@ export async function POST(req: NextRequest) {
     // Update balance to full cash
     await supabase.from('profiles').update({ mock_balance: myTotalCash }).eq('id', user.id)
 
-    // Step 3: Fetch Target User Profile & Holdings
-    const { data: targetProfile } = await supabase.from('profiles').select('mock_balance').eq('id', targetUserId).single()
-    const { data: targetHoldings } = await supabase.from('holdings').select('*').eq('user_id', targetUserId)
+    // Step 3: Fetch Target User Profile & Holdings (Bypassing RLS since target user details are private by default)
+    const adminSupabase = createAdminClient()
+    const { data: targetProfile } = await adminSupabase.from('profiles').select('mock_balance').eq('id', targetUserId).single()
+    const { data: targetHoldings } = await adminSupabase.from('holdings').select('*').eq('user_id', targetUserId)
 
     if (!targetProfile) {
       return NextResponse.json({ error: 'Target profile not found' }, { status: 404 })
@@ -72,6 +73,10 @@ export async function POST(req: NextRequest) {
         targetTotalValue += value
         targetAssetValues[holding.symbol] = { type: holding.asset_type, value, price: currentPrice }
       }
+    }
+
+    if (targetTotalValue <= 0) {
+      return NextResponse.json({ error: 'Target trader portfolio has no assets or balance to copy.' }, { status: 400 })
     }
 
     // Step 5: Buy Assets Proportionally
