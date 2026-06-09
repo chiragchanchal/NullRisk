@@ -27,9 +27,28 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data, error } = await supabase.auth.getUser()
+    if (error) {
+      // Clear cookies on auth errors (stale tokens, deleted users, etc.) to prevent server logs spamming
+      const allCookies = request.cookies.getAll()
+      allCookies.forEach(cookie => {
+        if (cookie.name.includes('auth-token')) {
+          supabaseResponse.cookies.set(cookie.name, '', { maxAge: 0 })
+        }
+      })
+    } else {
+      user = data?.user || null
+    }
+  } catch (err) {
+    const allCookies = request.cookies.getAll()
+    allCookies.forEach(cookie => {
+      if (cookie.name.includes('auth-token')) {
+        supabaseResponse.cookies.set(cookie.name, '', { maxAge: 0 })
+      }
+    })
+  }
 
   // Protected routes logic
   // If no user and not on auth/login or auth/confirm, redirect to login
