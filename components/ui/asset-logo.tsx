@@ -100,9 +100,9 @@ function renderCurrencyCoin(currency: string, size: number, className: string = 
     <div 
       className={`rounded-full bg-gradient-to-br ${bgGradient} text-white flex items-center justify-center font-black shadow-md border border-white/20 select-none relative shrink-0 transition-transform hover:scale-[1.05] ${className}`}
       style={{ 
-        width: size, 
-        height: size, 
-        fontSize: symbol.length > 2 ? size * 0.28 : size * 0.42
+        width: `${size}px`, 
+        height: `${size}px`, 
+        fontSize: symbol.length > 2 ? `${size * 0.28}px` : `${size * 0.42}px`
       }}
     >
       {/* Coin inner ring */}
@@ -859,11 +859,11 @@ function renderStockCoinFallback(symbol: string, size: number, className: string
   return (
     <div 
       className={`rounded-xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center font-black shadow-md border border-white/20 select-none relative shrink-0 transition-transform hover:scale-[1.05] ${className}`}
-      style={{ width: size, height: size }}
+      style={{ width: `${size}px`, height: `${size}px` }}
     >
       <div 
         className="absolute inset-[10%] rounded-xl border border-white/10 flex items-center justify-center font-mono tracking-tight text-center"
-        style={{ fontSize: size * 0.38 }}
+        style={{ fontSize: `${size * 0.38}px` }}
       >
         {cleanInit}
       </div>
@@ -878,11 +878,11 @@ function renderCryptoCoinFallback(symbol: string, size: number, className: strin
   return (
     <div 
       className={`rounded-full bg-gradient-to-br ${gradient} text-white flex items-center justify-center font-black shadow-md border border-white/20 select-none relative shrink-0 transition-transform hover:scale-[1.05] ${className}`}
-      style={{ width: size, height: size }}
+      style={{ width: `${size}px`, height: `${size}px` }}
     >
       <div 
         className="absolute inset-[10%] rounded-full border border-white/10 flex items-center justify-center font-mono tracking-tight text-center"
-        style={{ fontSize: size * 0.38 }}
+        style={{ fontSize: `${size * 0.38}px` }}
       >
         {cleanInit}
       </div>
@@ -904,7 +904,7 @@ export function AssetLogo({ symbol, type = 'stock', className = '', size = 32 }:
     return (
       <div 
         className={`relative inline-flex items-center shrink-0 ${className}`}
-        style={{ width: size, height: size }}
+        style={{ width: `${size}px`, height: `${size}px` }}
       >
         {/* Quote currency coin (bottom-right) */}
         {renderCurrencyCoin(quoteCurrency, size * 0.65, 'absolute bottom-0 right-0 z-0')}
@@ -921,7 +921,7 @@ export function AssetLogo({ symbol, type = 'stock', className = '', size = 32 }:
       return (
         <div 
           className={`rounded-full bg-gradient-to-br ${cryptoConfig.bg} flex items-center justify-center shrink-0 shadow-md border border-white/20 relative transition-transform hover:scale-[1.05] ${className}`}
-          style={{ width: size, height: size }}
+          style={{ width: `${size}px`, height: `${size}px` }}
         >
           {/* Inner ring */}
           <div className="absolute inset-[8%] rounded-full border border-white/10 flex items-center justify-center overflow-hidden">
@@ -939,7 +939,7 @@ export function AssetLogo({ symbol, type = 'stock', className = '', size = 32 }:
     return (
       <div 
         className={`rounded-xl bg-gradient-to-br ${stockConfig.bg} flex items-center justify-center shrink-0 shadow-md border border-white/20 relative transition-transform hover:scale-[1.05] ${className}`}
-        style={{ width: size, height: size }}
+        style={{ width: `${size}px`, height: `${size}px` }}
       >
         {/* Inner ring */}
         <div className="absolute inset-[8%] rounded-xl border border-white/10 flex items-center justify-center overflow-hidden">
