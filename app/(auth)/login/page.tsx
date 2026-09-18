@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { TrendingUp, Mail, ArrowRight, CheckCircle2, Lock, RefreshCw, Eye, EyeOff } from 'lucide-react'
+import { Mail, ArrowRight, CheckCircle2, Lock, RefreshCw, Eye, EyeOff, Shield } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 const GoogleIcon = () => (
@@ -81,7 +81,7 @@ function LoginForm() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       })
 
@@ -89,7 +89,6 @@ function LoginForm() {
         setError(error.message)
         setLoading(false)
       } else if (data?.session) {
-        // If email confirmation is disabled, user is immediately logged in
         window.location.href = '/'
       } else {
         setSubmitted(true)
@@ -111,20 +110,20 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-zinc-950 p-4 font-sans relative overflow-hidden">
-      {/* Dynamic glow decoration */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-green-500/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 left-1/3 w-[300px] h-[300px] bg-zinc-500/5 rounded-full blur-[100px] pointer-events-none" />
+    <div className="min-h-screen w-full flex items-center justify-center bg-zinc-950 bg-dot-grid p-4 font-sans relative overflow-hidden">
+      {/* Background ambient lighting */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-emerald-500/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/3 w-[350px] h-[350px] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-md relative z-10 space-y-6">
-        {/* Logo and Subtext */}
-        <div className="flex flex-col items-center text-center space-y-3">
-          <div className="h-12 w-12 bg-green-950/40 border border-green-800/40 rounded-2xl flex items-center justify-center shadow-lg shadow-green-950/20">
-            <TrendingUp className="h-6 w-6 text-green-500 animate-pulse" />
+        {/* Brand Header */}
+        <div className="flex flex-col items-center text-center space-y-2">
+          <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shadow-[0_0_25px_-5px_rgba(16,185,129,0.3)]">
+            <Shield className="h-6 w-6 text-emerald-400" />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white font-mono">NullRisk</h1>
-          <p className="text-xs text-zinc-500 max-w-xs font-mono">
-            Professional Market Options & Margin Paper Trading Simulator
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-100 font-sans">NullRisk</h1>
+          <p className="text-xs text-zinc-400 max-w-xs font-mono">
+            High-fidelity institutional options & margin paper trading platform
           </p>
         </div>
 
@@ -132,44 +131,45 @@ function LoginForm() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-zinc-950/80 border border-zinc-800 rounded-2xl p-8 text-center space-y-5 shadow-2xl backdrop-blur-xl font-mono"
+            className="bg-zinc-950/80 border border-white/[0.08] rounded-2xl p-8 text-center space-y-5 shadow-2xl backdrop-blur-xl font-mono"
           >
-            <div className="mx-auto h-12 w-12 bg-green-950/30 border border-green-800/30 rounded-full flex items-center justify-center">
-              <CheckCircle2 className="h-6 w-6 text-green-400" />
+            <div className="mx-auto h-12 w-12 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center">
+              <CheckCircle2 className="h-6 w-6 text-emerald-400" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-bold text-white uppercase tracking-wider">Account Pending</h3>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                We have sent an activation link to <span className="text-green-400 font-bold">{email}</span>.
+              <h2 className="text-base font-bold text-zinc-100 uppercase tracking-wider">Account Pending Activation</h2>
+              <p className="text-xs text-zinc-400 leading-relaxed font-sans">
+                We have sent an activation link to <span className="text-emerald-400 font-mono font-bold">{email}</span>.
                 Please check your inbox or spam folder to complete registration.
               </p>
             </div>
             <button
+              type="button"
               onClick={() => {
                 setSubmitted(false)
                 setEmail('')
                 setPassword('')
                 setConfirmPassword('')
               }}
-              className="text-xs text-green-400 hover:text-green-300 font-bold hover:underline transition-all pt-2 block w-full uppercase tracking-wider"
+              className="text-xs text-emerald-400 hover:text-emerald-300 font-bold transition-all pt-2 block w-full uppercase tracking-wider"
             >
               ← Back to Sign In
             </button>
           </motion.div>
         ) : (
-          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-xl">
-            {/* Elegant Tab Headers */}
-            <div className="flex border-b border-zinc-800/80 bg-zinc-950/40">
+          <div className="bg-zinc-950/80 border border-white/[0.08] rounded-2xl overflow-hidden shadow-[0_8px_32px_-4px_rgba(0,0,0,0.8)] backdrop-blur-xl">
+            {/* Tab Navigation */}
+            <div className="flex border-b border-white/[0.06] bg-zinc-900/40">
               <button
                 type="button"
                 onClick={() => {
                   setActiveTab('signin')
                   setError(null)
                 }}
-                className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all font-mono border-b-2 ${
+                className={`flex-1 py-3.5 text-xs font-mono font-bold uppercase tracking-wider transition-all border-b-2 ${
                   activeTab === 'signin'
-                    ? 'border-green-500 text-green-400 bg-zinc-900/10'
-                    : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/5'
+                    ? 'border-emerald-500 text-emerald-400 bg-zinc-900/20'
+                    : 'border-transparent text-zinc-500 hover:text-zinc-300'
                 }`}
               >
                 Sign In
@@ -180,27 +180,27 @@ function LoginForm() {
                   setActiveTab('signup')
                   setError(null)
                 }}
-                className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all font-mono border-b-2 ${
+                className={`flex-1 py-3.5 text-xs font-mono font-bold uppercase tracking-wider transition-all border-b-2 ${
                   activeTab === 'signup'
-                    ? 'border-green-500 text-green-400 bg-zinc-900/10'
-                    : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/5'
+                    ? 'border-emerald-500 text-emerald-400 bg-zinc-900/20'
+                    : 'border-transparent text-zinc-500 hover:text-zinc-300'
                 }`}
               >
                 Create Account
               </button>
             </div>
 
-            <div className="p-6 sm:p-8 space-y-6">
-              {/* Google Social OAuth Button */}
+            <div className="p-6 sm:p-7 space-y-5">
+              {/* Google OAuth Button */}
               <button
                 type="button"
                 disabled={googleLoading || loading}
                 onClick={handleGoogleAuth}
-                className="w-full h-11 bg-zinc-950 hover:bg-zinc-900 border border-zinc-800/80 active:scale-[0.99] disabled:opacity-40 text-zinc-200 hover:text-white rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 shadow-sm"
+                className="w-full h-11 bg-zinc-900 hover:bg-zinc-850 border border-white/[0.08] hover:border-zinc-700 active:scale-[0.99] disabled:opacity-40 text-zinc-200 hover:text-white rounded-xl text-xs font-mono font-bold transition-all flex items-center justify-center gap-2 shadow-sm"
               >
                 {googleLoading ? (
                   <>
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-green-500" />
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-emerald-400" />
                     Connecting to Google...
                   </>
                 ) : (
@@ -211,41 +211,41 @@ function LoginForm() {
                 )}
               </button>
 
-              {/* Text Separator */}
+              {/* Separator */}
               <div className="relative flex items-center py-1">
-                <div className="flex-grow border-t border-zinc-800/60"></div>
-                <span className="flex-shrink mx-4 text-[9px] text-zinc-600 font-bold uppercase tracking-widest font-mono">
-                  or use Gmail / Email
+                <div className="flex-grow border-t border-white/[0.06]"></div>
+                <span className="flex-shrink mx-3 text-[9px] font-mono text-zinc-600 uppercase tracking-widest font-semibold">
+                  or email credentials
                 </span>
-                <div className="flex-grow border-t border-zinc-800/60"></div>
+                <div className="flex-grow border-t border-white/[0.06]"></div>
               </div>
 
-              {/* Credential Auth Form */}
+              {/* Credentials Form */}
               <form onSubmit={handleCredentialAuth} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label htmlFor="email" className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono">
-                    Gmail / Email Address
+                  <label htmlFor="email" className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 font-semibold">
+                    Email Address
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                     <input
                       id="email"
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="username@gmail.com"
-                      className="w-full h-11 bg-zinc-950 border border-zinc-800/80 focus:border-green-700 rounded-xl pl-11 pr-4 text-sm font-mono text-white placeholder:text-zinc-600 outline-none transition-all focus:ring-1 focus:ring-green-950"
+                      placeholder="trader@nullrisk.dev"
+                      className="w-full h-10 bg-zinc-900/60 border border-white/[0.08] focus:border-emerald-500/40 rounded-xl pl-10 pr-4 text-xs font-mono text-zinc-100 placeholder:text-zinc-600 outline-none transition-all focus:ring-1 focus:ring-emerald-500/20"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="password" className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono">
+                  <label htmlFor="password" className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 font-semibold">
                     Password
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                     <input
                       id="password"
                       type={showPassword ? 'text' : 'password'}
@@ -253,12 +253,12 @@ function LoginForm() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full h-11 bg-zinc-950 border border-zinc-800/80 focus:border-green-700 rounded-xl pl-11 pr-10 text-sm font-mono text-white placeholder:text-zinc-600 outline-none transition-all focus:ring-1 focus:ring-green-950"
+                      className="w-full h-10 bg-zinc-900/60 border border-white/[0.08] focus:border-emerald-500/40 rounded-xl pl-10 pr-10 text-xs font-mono text-zinc-100 placeholder:text-zinc-600 outline-none transition-all focus:ring-1 focus:ring-emerald-500/20"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400 p-1"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 p-1"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -267,11 +267,11 @@ function LoginForm() {
 
                 {activeTab === 'signup' && (
                   <div className="space-y-1.5">
-                    <label htmlFor="confirmPassword" className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono">
+                    <label htmlFor="confirmPassword" className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 font-semibold">
                       Confirm Password
                     </label>
                     <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                       <input
                         id="confirmPassword"
                         type={showPassword ? 'text' : 'password'}
@@ -279,7 +279,7 @@ function LoginForm() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full h-11 bg-zinc-950 border border-zinc-800/80 focus:border-green-700 rounded-xl pl-11 pr-4 text-sm font-mono text-white placeholder:text-zinc-600 outline-none transition-all focus:ring-1 focus:ring-green-950"
+                        className="w-full h-10 bg-zinc-900/60 border border-white/[0.08] focus:border-emerald-500/40 rounded-xl pl-10 pr-4 text-xs font-mono text-zinc-100 placeholder:text-zinc-600 outline-none transition-all focus:ring-1 focus:ring-emerald-500/20"
                       />
                     </div>
                   </div>
@@ -287,9 +287,9 @@ function LoginForm() {
 
                 {error && (
                   <motion.div
-                    initial={{ opacity: 0, y: -5 }}
+                    initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="p-3.5 rounded-xl bg-red-950/20 border border-red-900/30 text-red-400 text-xs font-semibold leading-relaxed font-mono"
+                    className="p-3 rounded-xl bg-rose-950/30 border border-rose-900/40 text-rose-300 text-xs font-mono leading-relaxed"
                   >
                     ⚠️ {error}
                   </motion.div>
@@ -298,7 +298,7 @@ function LoginForm() {
                 <button
                   type="submit"
                   disabled={loading || googleLoading || !email || !password || (activeTab === 'signup' && !confirmPassword)}
-                  className="w-full h-11 bg-green-900 hover:bg-green-800 text-green-100 hover:text-white disabled:opacity-40 rounded-xl text-xs font-black uppercase tracking-widest transition-all font-mono flex items-center justify-center gap-1.5 mt-2 shadow-lg shadow-green-950/10 active:scale-[0.99]"
+                  className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 disabled:opacity-40 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 mt-2 shadow-[0_0_20px_-3px_rgba(16,185,129,0.3)] active:scale-[0.99]"
                 >
                   {loading ? (
                     <>
@@ -307,26 +307,26 @@ function LoginForm() {
                     </>
                   ) : (
                     <>
-                      {activeTab === 'signin' ? 'Sign In with Gmail' : 'Create Account'}
+                      {activeTab === 'signin' ? 'Sign In with Email' : 'Create Account'}
                       <ArrowRight className="h-3.5 w-3.5" />
                     </>
                   )}
                 </button>
               </form>
 
-              {/* Account conversion message */}
-              <div className="text-center pt-2">
+              {/* Conversion link */}
+              <div className="text-center pt-1">
                 <button
                   type="button"
                   onClick={() => {
                     setActiveTab(activeTab === 'signin' ? 'signup' : 'signin')
                     setError(null)
                   }}
-                  className="text-[10px] font-bold text-green-500 hover:text-green-400 uppercase tracking-wider font-mono hover:underline"
+                  className="text-[11px] font-mono text-zinc-500 hover:text-emerald-400 transition-colors"
                 >
                   {activeTab === 'signin'
-                    ? "Don't have an account? Sign Up instead"
-                    : 'Already registered? Log In instead'}
+                    ? "Don't have an account? Sign Up instead →"
+                    : 'Already registered? Log In instead →'}
                 </button>
               </div>
             </div>

@@ -1,11 +1,30 @@
 'use client'
 
 import useSWR from 'swr'
-import { TrendingUp, RefreshCw, BarChart3, Award, HelpCircle } from 'lucide-react'
+import Link from 'next/link'
+import {
+  TrendingUp,
+  TrendingDown,
+  RefreshCw,
+  Award,
+  ArrowUpRight,
+  ShieldCheck,
+  Zap,
+  Layers,
+  ArrowRight,
+} from 'lucide-react'
 import { motion } from 'framer-motion'
 
 // SWR fetcher
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
+
+const QUICK_ASSETS = [
+  { symbol: 'BTC', name: 'Bitcoin', type: 'crypto', price: '₹72,40,000', change: '+3.8%' },
+  { symbol: 'ETH', name: 'Ethereum', type: 'crypto', price: '₹2,95,000', change: '+2.1%' },
+  { symbol: 'RELIANCE.NS', name: 'Reliance Ind.', type: 'stock', price: '₹2,980.50', change: '+0.9%' },
+  { symbol: 'NVDA', name: 'NVIDIA Corp.', type: 'stock', price: '₹98,400', change: '+4.2%' },
+  { symbol: 'USDINR', name: 'USD / INR', type: 'forex', price: '₹83.45', change: '+0.05%' },
+]
 
 export default function DashboardPage() {
   // Poll every 15 seconds
@@ -24,16 +43,17 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="p-6 text-loss bg-loss/10 rounded-xl">
-        Failed to load portfolio summary.
+      <div className="p-6 rounded-2xl bg-rose-950/20 border border-rose-900/40 text-rose-400 font-mono text-xs">
+        ⚠️ Failed to load portfolio summary. Please verify your connection or reload.
       </div>
     )
   }
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64 text-muted-foreground">
-        <RefreshCw className="h-8 w-8 animate-spin" />
+      <div className="flex flex-col items-center justify-center h-80 text-zinc-500 gap-3">
+        <RefreshCw className="h-6 w-6 animate-spin text-emerald-400" />
+        <span className="text-xs font-mono tracking-wider uppercase">Loading Real-Time Portfolio...</span>
       </div>
     )
   }
@@ -46,186 +66,324 @@ export default function DashboardPage() {
   const displayPct = Math.max(-10, Math.min(10, totalPnLPct))
   const percentagePosition = ((displayPct + 10) / 20) * 100
 
+  // Milestone bonus calculation
+  const milestoneTarget = Math.ceil((totalPnLPct + 0.01) / 10) * 10
+  const pctToMilestone = Math.max(0, (milestoneTarget || 10) - totalPnLPct)
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/[0.06]">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground flex items-center gap-2">
-            Welcome back to NullRisk. Live market data connected.
-            {isValidating && <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />}
-          </p>
-        </div>
-      </div>
-      
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {/* Total Portfolio Value */}
-        <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 relative overflow-hidden">
-          <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <h3 className="tracking-tight text-sm font-medium">Total Portfolio Value</h3>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-100 font-sans">Portfolio Terminal</h1>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800 text-zinc-400 border border-white/[0.06]">
+              REAL-TIME
+            </span>
           </div>
-          <div className="text-2xl font-bold">{formatCurrency(summary?.totalPortfolioValue || 0)}</div>
-          <p className="text-xs text-muted-foreground mt-1">
-            <span className={`font-medium ${summary?.totalPnLPct >= 0 ? 'text-gain' : 'text-loss'}`}>
-              {summary?.totalPnLPct >= 0 ? '+' : ''}{summary?.totalPnLPct?.toFixed(2)}%
-            </span> All Time
-          </p>
-          <div className="absolute right-[-10%] bottom-[-10%] opacity-5 pointer-events-none">
-            <TrendingUp className="h-32 w-32" />
-          </div>
-        </div>
-
-        {/* Available Cash */}
-        <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
-          <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <h3 className="tracking-tight text-sm font-medium">Available Cash</h3>
-          </div>
-          <div className="text-2xl font-bold">{formatCurrency(summary?.cashBalance || 0)}</div>
-          <p className="text-xs text-muted-foreground mt-1">
-             Ready to deploy
+          <p className="text-xs text-zinc-400 mt-1 flex items-center gap-2 font-mono">
+            <span>Aggregated multi-asset paper trading engine</span>
+            {isValidating && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Syncing
+              </span>
+            )}
           </p>
         </div>
 
-        {/* Unrealised P&L */}
-        <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
-          <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <h3 className="tracking-tight text-sm font-medium">Unrealised P&L</h3>
-          </div>
-          <div className={`text-2xl font-bold ${summary?.totalUnrealisedPnL >= 0 ? 'text-gain' : 'text-loss'}`}>
-            {summary?.totalUnrealisedPnL >= 0 ? '+' : ''}{formatCurrency(summary?.totalUnrealisedPnL || 0)}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-             From open positions
-          </p>
-        </div>
-
-        {/* Realised P&L */}
-        <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6">
-          <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <h3 className="tracking-tight text-sm font-medium">Realised P&L</h3>
-          </div>
-          <div className={`text-2xl font-bold ${summary?.realisedPnL >= 0 ? 'text-gain' : 'text-loss'}`}>
-            {summary?.realisedPnL >= 0 ? '+' : ''}{formatCurrency(summary?.realisedPnL || 0)}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-             Locked in profits
-          </p>
+        {/* Action Shortcuts */}
+        <div className="flex items-center gap-2">
+          <Link
+            href="/market"
+            className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-white/[0.08] text-xs font-mono font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+          >
+            <span>Explore Markets</span>
+            <ArrowRight className="h-3.5 w-3.5 text-zinc-400" />
+          </Link>
+          <Link
+            href="/options"
+            className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all"
+          >
+            <Zap className="h-3.5 w-3.5" />
+            <span>Options Chain</span>
+          </Link>
         </div>
       </div>
 
-      {/* Visual Profit & Loss Performance Meter */}
-      <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6 relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+      {/* 4-Card Bento Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Total Portfolio Value */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-900/70 to-zinc-950/90 border border-white/[0.08] p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)] group hover:border-zinc-700/80 transition-all">
+          <div className="flex items-center justify-between pb-3">
+            <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 font-semibold">
+              Total Net Worth
+            </span>
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                isPositive
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+              }`}
+            >
+              {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+              {isPositive ? '+' : ''}
+              {summary?.totalPnLPct?.toFixed(2)}%
+            </span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-bold font-mono text-zinc-100 tabular-nums">
+            {formatCurrency(summary?.totalPortfolioValue || 0)}
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-zinc-500 font-mono">
+            <span>Base Capital</span>
+            <span className="text-zinc-300 tabular-nums">{formatCurrency(summary?.initialBalance || 500000)}</span>
+          </div>
+          {/* Subtle Background Accent */}
+          <div
+            className={`absolute -right-10 -bottom-10 h-32 w-32 rounded-full blur-3xl pointer-events-none opacity-15 ${
+              isPositive ? 'bg-emerald-500' : 'bg-rose-500'
+            }`}
+          />
+        </div>
+
+        {/* Card 2: Available Cash */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-900/70 to-zinc-950/90 border border-white/[0.08] p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)] group hover:border-zinc-700/80 transition-all">
+          <div className="flex items-center justify-between pb-3">
+            <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 font-semibold">
+              Deployable Cash
+            </span>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800/80 text-zinc-300 border border-white/[0.06]">
+              READY
+            </span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-bold font-mono text-zinc-100 tabular-nums">
+            {formatCurrency(summary?.cashBalance || 0)}
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-zinc-500 font-mono">
+            <span>Collateral Status</span>
+            <span className="text-emerald-400 font-medium">Unencumbered</span>
+          </div>
+        </div>
+
+        {/* Card 3: Unrealised P&L */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-900/70 to-zinc-950/90 border border-white/[0.08] p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)] group hover:border-zinc-700/80 transition-all">
+          <div className="flex items-center justify-between pb-3">
+            <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 font-semibold">
+              Floating P&L
+            </span>
+            <span className="text-[10px] font-mono text-zinc-500">OPEN TRADES</span>
+          </div>
+          <div
+            className={`text-2xl sm:text-3xl font-bold font-mono tabular-nums ${
+              (summary?.totalUnrealisedPnL || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
+            }`}
+          >
+            {(summary?.totalUnrealisedPnL || 0) >= 0 ? '+' : ''}
+            {formatCurrency(summary?.totalUnrealisedPnL || 0)}
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-zinc-500 font-mono">
+            <span>Active Holdings</span>
+            <span className="text-zinc-300 tabular-nums">{summary?.holdings?.length || 0} Assets</span>
+          </div>
+        </div>
+
+        {/* Card 4: Realised P&L */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-900/70 to-zinc-950/90 border border-white/[0.08] p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)] group hover:border-zinc-700/80 transition-all">
+          <div className="flex items-center justify-between pb-3">
+            <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 font-semibold">
+              Realised Gain/Loss
+            </span>
+            <span className="text-[10px] font-mono text-zinc-500">LOCKED</span>
+          </div>
+          <div
+            className={`text-2xl sm:text-3xl font-bold font-mono tabular-nums ${
+              (summary?.realisedPnL || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
+            }`}
+          >
+            {(summary?.realisedPnL || 0) >= 0 ? '+' : ''}
+            {formatCurrency(summary?.realisedPnL || 0)}
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-zinc-500 font-mono">
+            <span>Settled Ledger</span>
+            <span className="text-zinc-300 font-medium">Secured</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Terminal Calibrated Performance Meter (21st.dev Style) */}
+      <div className="rounded-2xl bg-gradient-to-b from-zinc-900/80 to-zinc-950 border border-white/[0.08] p-6 shadow-[0_4px_30px_-6px_rgba(0,0,0,0.7)] relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6">
           <div>
-            <h3 className="text-lg font-bold tracking-tight flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              All-Time Performance Meter
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Real-time visualization of negative losses versus positive profits
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              <h2 className="text-base font-bold text-zinc-100 tracking-tight font-sans">
+                Performance Calibration & Risk Gauge
+              </h2>
+            </div>
+            <p className="text-xs text-zinc-400 mt-1 font-mono">
+              Live dual-axis return meter mapped between -10.00% drawdown and +10.00% milestone unlock
             </p>
           </div>
+
           <div className="flex items-center gap-3">
-            <div className={`text-lg font-mono font-black px-3 py-1 rounded-lg border ${
-              isPositive 
-                ? 'bg-gain/10 border-gain/20 text-gain' 
-                : 'bg-loss/10 border-loss/20 text-loss'
-            }`}>
-              {isPositive ? '+' : ''}{formatCurrency(totalPnL)} ({totalPnLPct >= 0 ? '+' : ''}{totalPnLPct.toFixed(2)}%)
+            <div
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border font-mono text-xs font-bold tabular-nums ${
+                isPositive
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                  : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+              }`}
+            >
+              <span>{isPositive ? 'Net Surplus:' : 'Net Deficit:'}</span>
+              <span>
+                {isPositive ? '+' : ''}
+                {formatCurrency(totalPnL)}
+              </span>
+              <span className="text-[10px] px-1 py-0.2 rounded bg-black/40">
+                {isPositive ? '+' : ''}
+                {totalPnLPct.toFixed(2)}%
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Center-aligned profit/loss bar */}
-        <div className="relative py-8 px-4 bg-muted/20 border border-border/50 rounded-xl">
-          {/* Legend and scale markers */}
-          <div className="absolute top-2 left-4 right-4 flex justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-            <span className="text-loss">Loss Zone (-10%)</span>
-            <span>Breakeven (0%)</span>
-            <span className="text-gain flex items-center gap-1">
-              <Award className="h-3 w-3 text-yellow-400 animate-pulse" />
-              Milestone Bonus (+10%)
+        {/* Visual Gauge Container */}
+        <div className="relative py-7 px-4 rounded-xl bg-zinc-950/60 border border-white/[0.05]">
+          {/* Top Scale Legend */}
+          <div className="flex justify-between items-center text-[10px] font-mono uppercase tracking-widest text-zinc-500 pb-3">
+            <span className="text-rose-400 flex items-center gap-1 font-semibold">
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> Drawdown Limit (-10%)
+            </span>
+            <span className="text-zinc-400 font-semibold">Breakeven (0.00%)</span>
+            <span className="text-emerald-400 flex items-center gap-1 font-semibold">
+              <Award className="h-3 w-3 text-amber-400 animate-pulse" /> Milestone Bonus (+10%)
             </span>
           </div>
 
-          {/* The Slider Track */}
-          <div className="relative h-4 w-full rounded-full bg-gradient-to-r from-loss/30 via-background to-gain/30 border border-border/60 overflow-hidden shadow-inner">
-            {/* Center tick line */}
-            <div className="absolute left-1/2 top-0 h-full w-[2px] bg-border/80 z-10" />
-            
-            {/* Left Fill for Losses */}
+          {/* Precision Dual-Sided Track */}
+          <div className="relative h-3 w-full rounded-full bg-zinc-900 border border-white/[0.08] overflow-hidden shadow-inner">
+            {/* Center tick */}
+            <div className="absolute left-1/2 top-0 h-full w-[2px] bg-white/20 z-10 -translate-x-1/2" />
+
+            {/* Left Loss Bar */}
             {!isPositive && (
-              <motion.div 
-                className="absolute right-1/2 top-0 h-full bg-gradient-to-l from-loss/60 to-loss/10 rounded-l-full"
+              <motion.div
+                className="absolute right-1/2 top-0 h-full bg-gradient-to-l from-rose-500 to-rose-600/40 rounded-l-full"
                 initial={{ width: 0 }}
                 animate={{ width: `${(Math.abs(displayPct) / 20) * 100}%` }}
-                transition={{ duration: 1, ease: 'easeOut' }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
               />
             )}
 
-            {/* Right Fill for Profits */}
+            {/* Right Gain Bar */}
             {isPositive && (
-              <motion.div 
-                className="absolute left-1/2 top-0 h-full bg-gradient-to-r from-gain/60 to-gain/10 rounded-r-full"
+              <motion.div
+                className="absolute left-1/2 top-0 h-full bg-gradient-to-r from-emerald-500 to-emerald-400/80 rounded-r-full shadow-[0_0_12px_rgba(16,185,129,0.5)]"
                 initial={{ width: 0 }}
                 animate={{ width: `${(displayPct / 20) * 100}%` }}
-                transition={{ duration: 1, ease: 'easeOut' }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
               />
             )}
           </div>
 
-          {/* Glowing dynamic pointer slider */}
+          {/* Dynamic Needle & Badge Indicator */}
           <motion.div
-            className="absolute top-[28px] -translate-x-1/2 flex flex-col items-center z-20 cursor-pointer"
+            className="absolute top-[32px] -translate-x-1/2 flex flex-col items-center z-20 pointer-events-none"
             initial={{ left: '50%' }}
             animate={{ left: `${percentagePosition}%` }}
-            transition={{ type: 'spring', stiffness: 100, damping: 15 }}
+            transition={{ type: 'spring', stiffness: 120, damping: 18 }}
           >
-            {/* Pointer Dot */}
-            <div className={`h-6 w-6 rounded-full border-2 bg-background flex items-center justify-center shadow-lg transition-all ${
-              isPositive 
-                ? 'border-gain shadow-gain/20' 
-                : 'border-loss shadow-loss/20'
-            }`}>
-              <div className={`h-2 .w-2 rounded-full ${isPositive ? 'bg-gain animate-pulse' : 'bg-loss'}`} />
+            <div
+              className={`h-5 w-5 rounded-full border-2 bg-zinc-950 flex items-center justify-center shadow-lg ${
+                isPositive ? 'border-emerald-400 shadow-emerald-500/20' : 'border-rose-400 shadow-rose-500/20'
+              }`}
+            >
+              <div
+                className={`h-1.5 w-1.5 rounded-full ${
+                  isPositive ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
+                }`}
+              />
             </div>
-            
-            {/* Little stem */}
-            <div className={`w-[2px] h-2 ${isPositive ? 'bg-gain/50' : 'bg-loss/50'}`} />
-
-            {/* Float value badge */}
-            <div className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono border whitespace-nowrap shadow-md ${
-              isPositive 
-                ? 'bg-gain/15 border-gain/30 text-gain' 
-                : 'bg-loss/15 border-loss/30 text-loss'
-            }`}>
-              {isPositive ? '+' : ''}{totalPnLPct.toFixed(2)}%
+            <div className={`w-[1px] h-2 ${isPositive ? 'bg-emerald-400/70' : 'bg-rose-400/70'}`} />
+            <div
+              className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border whitespace-nowrap shadow-md ${
+                isPositive
+                  ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-300'
+                  : 'bg-rose-950/80 border-rose-500/40 text-rose-300'
+              }`}
+            >
+              {isPositive ? '+' : ''}
+              {totalPnLPct.toFixed(2)}%
             </div>
           </motion.div>
 
-          {/* Scale Labels below the bar */}
-          <div className="mt-5 flex justify-between text-[11px] font-mono text-muted-foreground px-1">
+          {/* Scale Labels */}
+          <div className="mt-6 flex justify-between text-[10px] font-mono text-zinc-500 px-1">
             <span>-10.00%</span>
             <span>-5.00%</span>
-            <span className="font-bold text-foreground/80">0.00%</span>
+            <span className="font-bold text-zinc-400">0.00%</span>
             <span>+5.00%</span>
             <span>+10.00%</span>
           </div>
         </div>
 
-        {/* Milestone info banner */}
-        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs bg-muted/40 p-3 rounded-lg border border-border/40">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <HelpCircle className="h-4 w-4 text-primary shrink-0" />
-            <span>Open spot, margin, and options trades do not deduct cash permanently. P&L reflects current price movements.</span>
+        {/* Milestone & Security Footer Strip */}
+        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs bg-zinc-950/60 p-3.5 rounded-xl border border-white/[0.06]">
+          <div className="flex items-center gap-2 text-zinc-400 font-mono text-[11px]">
+            <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
+            <span>Paper Trading Protocol: Positions do not risk real capital. Simulated ledger active.</span>
           </div>
           {totalPnLPct >= 10 ? (
-            <span className="text-gain font-semibold animate-bounce shrink-0">🎉 Milestone Unlocked! ₹10L bonus is yours.</span>
+            <div className="flex items-center gap-1.5 text-emerald-400 font-mono font-semibold text-xs shrink-0">
+              <Award className="h-4 w-4 text-amber-400 animate-bounce" />
+              <span>Milestone Unlocked! ₹10,00,000 Bonus Credited.</span>
+            </div>
           ) : (
-            <span className="text-muted-foreground shrink-0">
-              Need <span className="text-primary font-bold">{(10 - totalPnLPct).toFixed(2)}%</span> more to reach milestone bonus.
-            </span>
+            <div className="text-zinc-400 font-mono text-[11px] shrink-0">
+              Targeting Milestone: Need{' '}
+              <span className="text-emerald-400 font-bold tabular-nums">+{pctToMilestone.toFixed(2)}%</span> return for ₹10L bonus.
+            </div>
           )}
+        </div>
+      </div>
+
+      {/* Quick Trade Strip (Top Assets) */}
+      <div className="rounded-2xl bg-zinc-950/70 border border-white/[0.08] p-5">
+        <div className="flex items-center justify-between pb-3">
+          <div className="flex items-center gap-2">
+            <Layers className="h-4 w-4 text-zinc-400" />
+            <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-300">
+              Market Shortcuts
+            </h3>
+          </div>
+          <Link
+            href="/market"
+            className="text-[11px] font-mono text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1"
+          >
+            <span>View All 150 Assets</span>
+            <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {QUICK_ASSETS.map((asset) => (
+            <Link
+              key={asset.symbol}
+              href={`/market/${asset.type}/${asset.symbol}`}
+              className="p-3 rounded-xl bg-zinc-900/60 hover:bg-zinc-900 border border-white/[0.06] hover:border-zinc-700 transition-all flex flex-col justify-between group"
+            >
+              <div className="flex items-center justify-between pb-2">
+                <span className="text-xs font-mono font-bold text-zinc-200 group-hover:text-emerald-400 transition-colors">
+                  {asset.symbol}
+                </span>
+                <span className="text-[10px] font-mono text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                  {asset.change}
+                </span>
+              </div>
+              <div>
+                <span className="text-[11px] font-mono text-zinc-400 tabular-nums">{asset.price}</span>
+                <span className="block text-[9px] font-mono text-zinc-600 truncate">{asset.name}</span>
+              </div>
+            </Link>
+          ))}
         </div>
       </div>
     </div>

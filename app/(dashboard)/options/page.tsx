@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Search, AlertTriangle, RefreshCw, Zap, TrendingUp, TrendingDown, Layers } from 'lucide-react'
 import useSWR from 'swr'
 import { generateStrikes, getExpiryDates } from '@/lib/engine/black-scholes'
 import { AssetLogo } from '@/components/ui/asset-logo'
 
-const fetcher = (url: string) => fetch(url).then(r => r.json())
+const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 interface PricingGreeks {
   price: number
@@ -41,10 +41,20 @@ interface OptionPositionItem {
   vega?: number
 }
 
-// ─── Animated Number (Bloomberg pulse) ───────────────────────────────────────
+// Bloomberg Pulse Micro-Metric
 function BloombergValue({
-  label, value, unit = '', color = 'text-green-400', decimals = 4
-}: { label: string; value: number; unit?: string; color?: string; decimals?: number }) {
+  label,
+  value,
+  unit = '',
+  color = 'text-emerald-400',
+  decimals = 4,
+}: {
+  label: string
+  value: number
+  unit?: string
+  color?: string
+  decimals?: number
+}) {
   const [prev, setPrev] = useState(value)
   const [pulse, setPulse] = useState(false)
 
@@ -55,87 +65,101 @@ function BloombergValue({
 
   useEffect(() => {
     if (pulse) {
-      const t = setTimeout(() => setPulse(false), 600)
+      const t = setTimeout(() => setPulse(false), 500)
       return () => clearTimeout(t)
     }
   }, [pulse])
 
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">{label}</span>
+      <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-500">
+        {label}
+      </span>
       <motion.span
-        animate={pulse ? { opacity: [1, 0.3, 1] } : {}}
-        transition={{ duration: 0.4 }}
-        className={`font-mono text-sm font-bold ${color} ${pulse ? 'text-white' : ''}`}
+        animate={pulse ? { opacity: [1, 0.4, 1] } : {}}
+        transition={{ duration: 0.3 }}
+        className={`font-mono text-xs sm:text-sm font-bold tabular-nums ${color} ${
+          pulse ? 'text-white' : ''
+        }`}
       >
-        {value >= 0 ? '' : '-'}{Math.abs(value).toFixed(decimals)}{unit}
+        {value >= 0 ? '' : '-'}
+        {Math.abs(value).toFixed(decimals)}
+        {unit}
       </motion.span>
     </div>
   )
 }
 
-// ─── Greeks Panel ─────────────────────────────────────────────────────────────
+// Greeks Terminal Box
 function GreeksPanel({ pricing }: { pricing: PricingGreeks | null }) {
   if (!pricing) return null
 
   return (
-    <div className="font-mono bg-zinc-950 border border-zinc-800 rounded-xl p-5">
+    <div className="rounded-2xl bg-zinc-950 border border-white/[0.08] p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)]">
       {/* Header bar */}
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800">
-        <span className="text-[11px] font-black tracking-widest text-zinc-400 uppercase">BLOOMBERG GREEKS TERMINAL</span>
-        <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-          pricing.impliedMoneyness === 'ITM' ? 'bg-green-900 text-green-300' :
-          pricing.impliedMoneyness === 'OTM' ? 'bg-red-900 text-red-300' :
-          'bg-yellow-900 text-yellow-300'
-        }`}>{pricing.impliedMoneyness}</span>
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/[0.06]">
+        <span className="text-[10px] font-mono font-bold tracking-widest text-zinc-400 uppercase flex items-center gap-1.5">
+          <Zap className="h-3 w-3 text-amber-400" /> BSM Greeks Matrix
+        </span>
+        <span
+          className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+            pricing.impliedMoneyness === 'ITM'
+              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+              : pricing.impliedMoneyness === 'OTM'
+              ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+              : 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+          }`}
+        >
+          {pricing.impliedMoneyness}
+        </span>
       </div>
 
-      {/* Price row */}
-      <div className="grid grid-cols-2 gap-4 mb-4 pb-3 border-b border-zinc-800">
-        <BloombergValue label="THEO PRICE" value={pricing.price} color="text-cyan-400" decimals={4} />
-        <BloombergValue label="IV %" value={pricing.sigma} unit="%" color="text-yellow-400" decimals={2} />
-        <BloombergValue label="INTRINSIC" value={pricing.intrinsicValue} color="text-green-400" decimals={4} />
-        <BloombergValue label="TIME VALUE" value={pricing.timeValue} color="text-purple-400" decimals={4} />
+      {/* Theoretical Price & IV */}
+      <div className="grid grid-cols-2 gap-3 mb-4 pb-3 border-b border-white/[0.06]">
+        <BloombergValue label="THEO PREMIUM" value={pricing.price} color="text-emerald-400" decimals={4} />
+        <BloombergValue label="VOLATILITY (IV)" value={pricing.sigma} unit="%" color="text-amber-400" decimals={2} />
+        <BloombergValue label="INTRINSIC VAL" value={pricing.intrinsicValue} color="text-zinc-200" decimals={4} />
+        <BloombergValue label="TIME VALUE" value={pricing.timeValue} color="text-zinc-400" decimals={4} />
       </div>
 
-      {/* Greeks grid */}
-      <div className="grid grid-cols-2 gap-4 mb-4 pb-3 border-b border-zinc-800">
+      {/* Primary Greeks */}
+      <div className="grid grid-cols-2 gap-3 mb-4 pb-3 border-b border-white/[0.06]">
         <BloombergValue
           label="Δ DELTA"
           value={pricing.delta}
-          color={pricing.delta >= 0 ? 'text-green-400' : 'text-red-400'}
+          color={pricing.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}
           decimals={4}
         />
         <BloombergValue label="Γ GAMMA" value={pricing.gamma} color="text-blue-400" decimals={6} />
-        <BloombergValue
-          label="Θ THETA / DAY"
-          value={pricing.theta}
-          color="text-orange-400"
-          decimals={4}
-        />
-        <BloombergValue label="ν VEGA / 1%" value={pricing.vega} color="text-pink-400" decimals={4} />
+        <BloombergValue label="Θ THETA (1D)" value={pricing.theta} color="text-orange-400" decimals={4} />
+        <BloombergValue label="ν VEGA (1%)" value={pricing.vega} color="text-purple-400" decimals={4} />
       </div>
 
-      {/* d1 / d2 */}
-      <div className="grid grid-cols-2 gap-4">
-        <BloombergValue label="d1" value={pricing.d1} color="text-zinc-400" decimals={4} />
-        <BloombergValue label="d2" value={pricing.d2} color="text-zinc-400" decimals={4} />
-      </div>
-
-      {/* Tooltip hints */}
-      <div className="mt-4 pt-3 border-t border-zinc-800 space-y-1">
-        <p className="text-[10px] text-zinc-600 font-mono">Δ: Change per ₹1 spot move | Γ: Delta rate of change</p>
-        <p className="text-[10px] text-zinc-600 font-mono">Θ: Daily time decay | ν: Sensitivity per 1% vol change</p>
+      {/* Normal Quantiles */}
+      <div className="grid grid-cols-2 gap-3">
+        <BloombergValue label="d1 NORMAL" value={pricing.d1} color="text-zinc-500" decimals={4} />
+        <BloombergValue label="d2 NORMAL" value={pricing.d2} color="text-zinc-500" decimals={4} />
       </div>
     </div>
   )
 }
 
-// ─── Position Card ────────────────────────────────────────────────────────────
-function PositionCard({ pos, onClose }: { pos: OptionPositionItem; onClose?: (id: string) => Promise<void> }) {
+// Position Card
+function PositionCard({
+  pos,
+  onClose,
+}: {
+  pos: OptionPositionItem
+  onClose?: (id: string) => Promise<void>
+}) {
   const [isClosing, setIsClosing] = useState(false)
   const isProfit = (pos.pnl ?? 0) >= 0
-  const statusColor = pos.status === 'exercised' ? 'text-green-400' : pos.status === 'expired' ? 'text-zinc-500' : 'text-blue-400'
+  const statusColor =
+    pos.status === 'exercised'
+      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+      : pos.status === 'expired'
+      ? 'text-zinc-500 bg-zinc-900 border-white/[0.06]'
+      : 'text-blue-400 bg-blue-500/10 border-blue-500/20'
 
   const handleClose = async () => {
     if (!onClose) return
@@ -151,36 +175,46 @@ function PositionCard({ pos, onClose }: { pos: OptionPositionItem; onClose?: (id
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="font-mono bg-zinc-950 border border-zinc-800 rounded-xl p-4"
+      className="rounded-2xl bg-zinc-950/80 border border-white/[0.08] p-5 shadow-sm space-y-3 font-mono"
     >
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2.5">
             <AssetLogo symbol={pos.symbol} type="stock" size={28} />
-            <span className="font-black text-white">{pos.symbol}</span>
-            <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
-              pos.option_type === 'call' ? 'bg-green-900/60 text-green-300' : 'bg-red-900/60 text-red-300'
-            }`}>{pos.option_type.toUpperCase()}</span>
+            <span className="font-bold text-zinc-100">{pos.symbol}</span>
+            <span
+              className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                pos.option_type === 'call'
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+              }`}
+            >
+              {pos.option_type.toUpperCase()}
+            </span>
           </div>
-          <div className="text-[11px] text-zinc-400 mt-0.5">
-            Strike ₹{pos.strike} · Exp {pos.expiry} · {pos.contracts} contract{pos.contracts > 1 ? 's' : ''}
+          <div className="text-[11px] text-zinc-500 mt-1">
+            Strike ₹{pos.strike} · Exp {pos.expiry} · {pos.contracts} ctr.
           </div>
         </div>
-        <span className={`text-[11px] font-bold uppercase ${statusColor}`}>{pos.status}</span>
+        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${statusColor}`}>
+          {pos.status}
+        </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 text-xs border-t border-zinc-800 pt-3">
+      <div className="grid grid-cols-3 gap-2 text-xs border-t border-white/[0.06] pt-3">
         <div>
-          <div className="text-zinc-600 text-[10px]">PREMIUM PAID</div>
-          <div className="text-white font-bold">₹{pos.premium_paid.toFixed(2)}</div>
+          <div className="text-zinc-500 text-[9px] uppercase">Paid Prem</div>
+          <div className="text-zinc-200 font-bold tabular-nums">₹{pos.premium_paid.toFixed(2)}</div>
         </div>
         <div>
-          <div className="text-zinc-600 text-[10px]">CURR VALUE</div>
-          <div className="text-white font-bold">₹{(pos.currentValue || 0).toFixed(2)}</div>
+          <div className="text-zinc-500 text-[9px] uppercase">Mark Val</div>
+          <div className="text-zinc-200 font-bold tabular-nums">₹{(pos.currentValue || 0).toFixed(2)}</div>
         </div>
         <div>
-          <div className="text-zinc-600 text-[10px]">P&L</div>
-          <div className={`font-black ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
+          <div className="text-zinc-500 text-[9px] uppercase">Net P&L</div>
+          <div
+            className={`font-bold tabular-nums ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}
+          >
             {isProfit ? '+' : ''}₹{(pos.pnl || 0).toFixed(2)}
           </div>
         </div>
@@ -188,24 +222,25 @@ function PositionCard({ pos, onClose }: { pos: OptionPositionItem; onClose?: (id
 
       {pos.status === 'open' && (
         <>
-          <div className="grid grid-cols-4 gap-2 text-[10px] border-t border-zinc-800 pt-2 mt-2 text-zinc-400 font-mono">
+          <div className="grid grid-cols-4 gap-2 text-[10px] border-t border-white/[0.06] pt-2 text-zinc-500">
             <div>Δ {(pos.delta || 0).toFixed(3)}</div>
             <div>Γ {(pos.gamma || 0).toFixed(4)}</div>
             <div>Θ {(pos.theta || 0).toFixed(4)}</div>
             <div>ν {(pos.vega || 0).toFixed(4)}</div>
           </div>
           <button
+            type="button"
             onClick={handleClose}
             disabled={isClosing}
-            className="w-full mt-3 h-8 bg-red-950/40 border border-red-950/60 hover:bg-red-900/40 text-red-400 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 disabled:opacity-40"
+            className="w-full mt-2 h-8 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-40"
           >
             {isClosing ? (
               <>
                 <RefreshCw className="h-3 w-3 animate-spin" />
-                CLOSING...
+                Closing Contract...
               </>
             ) : (
-              '⚡ CUT POSITION'
+              '⚡ Settle Position'
             )}
           </button>
         </>
@@ -214,7 +249,6 @@ function PositionCard({ pos, onClose }: { pos: OptionPositionItem; onClose?: (id
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function OptionsPage() {
   const [symbol, setSymbol] = useState('AAPL')
   const [symbolInput, setSymbolInput] = useState('AAPL')
@@ -229,15 +263,13 @@ export default function OptionsPage() {
   const [buyMessage, setBuyMessage] = useState('')
   const [buySuccess, setBuySuccess] = useState(false)
 
-  // Fetch spot price + strikes whenever symbol changes
   const { data: spotData, isLoading: spotLoading } = useSWR(
-    symbol ? `/api/market/quote?symbol=${symbol}&assetType=stock` : null,
+    symbol ? `/api/market/quote?symbol=${encodeURIComponent(symbol)}&assetType=stock` : null,
     fetcher,
     { refreshInterval: 15000 }
   )
   const spotPrice = spotData?.price || 0
 
-  // Generate strikes when spot is known
   const strikes = useMemo(() => {
     return spotPrice > 0 ? generateStrikes(spotPrice, 5, spotPrice > 1000 ? 50 : spotPrice > 100 ? 5 : 1) : []
   }, [spotPrice])
@@ -252,16 +284,21 @@ export default function OptionsPage() {
   const [chosenStrike, setChosenStrike] = useState<number | null>(null)
   const selectedStrike = chosenStrike ?? defaultStrike
 
-  // Fetch BSM pricing whenever inputs change
-  const pricingUrl = selectedStrike && selectedExpiry && symbol
-    ? `/api/options/price?symbol=${symbol}&strike=${selectedStrike}&T=${selectedExpiry.T.toFixed(6)}&type=${optionType}`
-    : null
+  const pricingUrl =
+    selectedStrike && selectedExpiry && symbol
+      ? `/api/options/price?symbol=${encodeURIComponent(symbol)}&strike=${selectedStrike}&T=${selectedExpiry.T.toFixed(
+          6
+        )}&type=${optionType}`
+      : null
 
-  const { data: pricing, isLoading: pricingLoading } = useSWR(pricingUrl, fetcher, { refreshInterval: 10000 })
+  const { data: pricing, isLoading: pricingLoading } = useSWR(pricingUrl, fetcher, {
+    refreshInterval: 10000,
+  })
 
-  // Options positions
   const { data: positionsData, mutate: mutatePositions } = useSWR(
-    '/api/options/positions', fetcher, { refreshInterval: 30000 }
+    '/api/options/positions',
+    fetcher,
+    { refreshInterval: 30000 }
   )
   const positions = positionsData?.positions || []
 
@@ -270,7 +307,7 @@ export default function OptionsPage() {
       const res = await fetch('/api/options/close', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ positionId })
+        body: JSON.stringify({ positionId }),
       })
       if (res.ok) {
         mutatePositions()
@@ -298,8 +335,8 @@ export default function OptionsPage() {
           optionType,
           strike: selectedStrike,
           expiryDate: selectedExpiry.date.toISOString().split('T')[0],
-          contracts
-        })
+          contracts,
+        }),
       })
       const data = await res.json()
       if (res.ok) {
@@ -320,93 +357,114 @@ export default function OptionsPage() {
   const totalPremium = pricing ? pricing.price * 100 * contracts : 0
 
   return (
-    <div className="space-y-6 font-mono">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/[0.06]">
         <div>
-          <h2 className="text-3xl font-black tracking-tight">Options Terminal</h2>
-          <p className="text-muted-foreground text-sm mt-1">
-            Black-Scholes-Merton pricing · Paper trading only
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-100 font-sans">Options Analytics Terminal</h1>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800 text-zinc-400 border border-white/[0.06]">
+              BLACK-SCHOLES-MERTON
+            </span>
+          </div>
+          <p className="text-xs text-zinc-400 mt-1 font-mono">
+            High-order analytical Greeks calculation & European-style simulated contract trading
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 px-3 py-2 rounded-lg">
+
+        <div className="flex items-center gap-2 text-xs font-mono bg-amber-500/10 border border-amber-500/20 text-amber-400 px-3 py-1.5 rounded-xl self-start sm:self-auto">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-          Simulated only — for educational purposes
+          <span>Simulated Paper Contracts</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* ── Left: Controls ── */}
+        {/* Left 2 Columns: Underlying & Strike Matrix */}
         <div className="xl:col-span-2 space-y-5">
-          {/* Symbol Search */}
-          <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5">
-            <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block mb-2">Underlying Symbol</label>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+          {/* Symbol Lookup Box */}
+          <div className="rounded-2xl bg-zinc-950/80 border border-white/[0.08] p-5 shadow-sm space-y-3">
+            <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 font-semibold block">
+              Underlying Equity Symbol
+            </label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1 group">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 group-focus-within:text-emerald-400 transition-colors" />
                 <input
                   type="text"
                   value={symbolInput}
-                  onChange={e => setSymbolInput(e.target.value.toUpperCase())}
-                  onKeyDown={e => { if (e.key === 'Enter') { setChosenStrike(null); setSymbol(symbolInput) } }}
-                  placeholder="AAPL, TSLA, NVDA..."
-                  className="w-full h-10 bg-zinc-900 border border-zinc-700 rounded-md pl-10 pr-4 text-sm font-mono text-white placeholder:text-zinc-600 outline-none focus:border-zinc-500 transition-colors"
+                  onChange={(e) => setSymbolInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setChosenStrike(null)
+                      setSymbol(symbolInput)
+                    }
+                  }}
+                  placeholder="AAPL, TSLA, NVDA, RELIANCE..."
+                  className="w-full h-10 bg-zinc-900 border border-white/[0.08] focus:border-emerald-500/40 rounded-xl pl-10 pr-4 text-xs font-mono text-zinc-200 placeholder:text-zinc-600 outline-none transition-all"
                 />
               </div>
               <button
-                onClick={() => { setChosenStrike(null); setSymbol(symbolInput) }}
-                className="h-10 sm:px-5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold rounded-md transition-colors w-full sm:w-auto"
+                type="button"
+                onClick={() => {
+                  setChosenStrike(null)
+                  setSymbol(symbolInput)
+                }}
+                className="h-10 px-5 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-xs font-mono font-bold rounded-xl border border-white/[0.08] transition-all"
               >
-                Load
+                Inspect
               </button>
             </div>
 
             {spotPrice > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-3 mt-3"
-              >
-                <span className="text-2xl font-black text-white">₹{spotPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                <span className="text-xs text-zinc-500">{symbol} live spot</span>
-                {spotLoading && <RefreshCw className="h-3 w-3 animate-spin text-zinc-500" />}
-              </motion.div>
+              <div className="flex items-center gap-3 pt-1 text-xs font-mono">
+                <span className="text-xl font-bold text-zinc-100 tabular-nums">
+                  ₹{spotPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
+                <span className="text-zinc-500">{symbol} Live Mark</span>
+                {spotLoading && <RefreshCw className="h-3 w-3 animate-spin text-emerald-400" />}
+              </div>
             )}
           </div>
 
-          {/* Call / Put Toggle */}
-          <div className="flex bg-zinc-950 border border-zinc-800 rounded-xl p-1 gap-1">
+          {/* Option Type Switcher */}
+          <div className="grid grid-cols-2 p-1 bg-zinc-900 rounded-xl border border-white/[0.08]">
             <button
+              type="button"
               onClick={() => setOptionType('call')}
-              className={`flex-1 py-2.5 text-sm font-black rounded-lg transition-all ${
+              className={`py-2 text-xs font-mono font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
                 optionType === 'call'
-                  ? 'bg-green-900 text-green-300 border border-green-700'
-                  : 'text-zinc-500 hover:text-zinc-300'
+                  ? 'bg-emerald-500 text-zinc-950 shadow-md'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              📈 CALL
+              <TrendingUp className="h-3.5 w-3.5" />
+              <span>CALL (BULLISH)</span>
             </button>
             <button
+              type="button"
               onClick={() => setOptionType('put')}
-              className={`flex-1 py-2.5 text-sm font-black rounded-lg transition-all ${
+              className={`py-2 text-xs font-mono font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
                 optionType === 'put'
-                  ? 'bg-red-900 text-red-300 border border-red-700'
-                  : 'text-zinc-500 hover:text-zinc-300'
+                  ? 'bg-rose-500 text-white shadow-md'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              📉 PUT
+              <TrendingDown className="h-3.5 w-3.5" />
+              <span>PUT (BEARISH)</span>
             </button>
           </div>
 
-          {/* Strike Chain */}
+          {/* Strike Price Chain */}
           {strikes.length > 0 && (
-            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5 relative overflow-hidden">
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block">Strike Price Chain</label>
-                <span className="text-[9px] text-zinc-500 font-bold block sm:hidden uppercase tracking-wider">Swipe Left/Right ↔</span>
+            <div className="rounded-2xl bg-zinc-950/80 border border-white/[0.08] p-5 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 font-semibold block">
+                  Strike Price Ladder
+                </label>
+                <span className="text-[9px] font-mono text-zinc-500">ATM/ITM Calibrated</span>
               </div>
-              <div className="flex gap-2 overflow-x-auto pb-2 snap-x scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                {strikes.map(strike => {
+              <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none]">
+                {strikes.map((strike) => {
                   const isSelected = selectedStrike === strike
                   const tol = spotPrice * 0.01
                   const isATM = Math.abs(strike - spotPrice) <= tol
@@ -415,23 +473,24 @@ export default function OptionsPage() {
                   return (
                     <button
                       key={strike}
+                      type="button"
                       onClick={() => setChosenStrike(strike)}
-                      className={`py-2 px-3 text-xs font-bold rounded-lg border transition-all text-center snap-center shrink-0 min-w-[85px] ${
+                      className={`py-2 px-3.5 text-xs font-mono font-bold rounded-xl border transition-all text-center shrink-0 min-w-[90px] ${
                         isSelected
                           ? optionType === 'call'
-                            ? 'bg-green-900 border-green-600 text-green-200 shadow-md scale-105'
-                            : 'bg-red-900 border-red-600 text-red-200 shadow-md scale-105'
+                            ? 'bg-emerald-500 text-zinc-950 border-emerald-400 shadow-md scale-105'
+                            : 'bg-rose-500 text-white border-rose-400 shadow-md scale-105'
                           : isATM
-                          ? 'border-yellow-700 bg-yellow-900/30 text-yellow-300'
+                          ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
                           : isITM
-                          ? 'border-zinc-600 bg-zinc-800 text-zinc-200 hover:border-zinc-500'
-                          : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:border-zinc-700'
+                          ? 'border-white/[0.1] bg-zinc-900 text-zinc-200 hover:border-zinc-600'
+                          : 'border-white/[0.04] bg-zinc-950 text-zinc-500 hover:border-zinc-800'
                       }`}
                     >
-                      <div>{strike}</div>
-                      {isATM && <div className="text-[8px] text-yellow-400 font-black">ATM</div>}
-                      {isITM && !isATM && <div className="text-[8px] text-green-500 font-black">ITM</div>}
-                      {!isATM && !isITM && <div className="text-[8px] opacity-40">OTM</div>}
+                      <div className="tabular-nums">₹{strike}</div>
+                      {isATM && <div className="text-[8px] uppercase tracking-wider font-extrabold text-amber-400">ATM</div>}
+                      {isITM && !isATM && <div className="text-[8px] uppercase tracking-wider font-extrabold text-emerald-400">ITM</div>}
+                      {!isATM && !isITM && <div className="text-[8px] uppercase tracking-wider opacity-40">OTM</div>}
                     </button>
                   )
                 })}
@@ -440,105 +499,127 @@ export default function OptionsPage() {
           )}
 
           {/* Expiry Selector */}
-          <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5">
-            <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block mb-3">Expiry Date</label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {expiryDates.map(exp => (
+          <div className="rounded-2xl bg-zinc-950/80 border border-white/[0.08] p-5 shadow-sm space-y-3">
+            <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 font-semibold block">
+              Contract Expiration Maturity
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {expiryDates.map((exp) => (
                 <button
                   key={exp.label}
+                  type="button"
                   onClick={() => setSelectedExpiry(exp)}
-                  className={`text-left p-3 rounded-lg border text-xs transition-all ${
+                  className={`text-left p-3.5 rounded-xl border text-xs font-mono transition-all ${
                     selectedExpiry?.label === exp.label
-                      ? 'border-zinc-500 bg-zinc-800 text-white'
-                      : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
+                      ? 'border-emerald-500/40 bg-zinc-900 text-zinc-100 ring-1 ring-emerald-500/20'
+                      : 'border-white/[0.06] bg-zinc-950 text-zinc-400 hover:border-zinc-700'
                   }`}
                 >
-                  <div className="font-bold">{exp.label.split(' — ')[0]}</div>
-                  <div className="text-zinc-500 mt-0.5">{exp.label.split(' — ')[1]}</div>
-                  <div className="text-zinc-600 mt-1">{(exp.T * 365).toFixed(0)} days</div>
+                  <div className="font-bold text-zinc-200">{exp.label.split(' — ')[0]}</div>
+                  <div className="text-[10px] text-zinc-500 mt-0.5">{exp.label.split(' — ')[1]}</div>
+                  <div className="text-[10px] text-emerald-400 font-medium mt-1">
+                    {(exp.T * 365).toFixed(0)} Days To Expiry
+                  </div>
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* ── Right: Greeks + Buy Panel ── */}
+        {/* Right Column: Greeks & Order Ticket */}
         <div className="space-y-4">
-          {/* Greeks */}
           {pricingLoading && (
-            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5 text-center text-zinc-500 text-sm">
-              <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
-              Calculating...
+            <div className="rounded-2xl bg-zinc-950 border border-white/[0.08] p-8 text-center text-zinc-500 text-xs font-mono flex flex-col items-center justify-center gap-2">
+              <RefreshCw className="h-5 w-5 animate-spin text-emerald-400" />
+              <span>Computing Theoretical Greeks...</span>
             </div>
           )}
-          {pricing && !pricing.error && (
-            <GreeksPanel pricing={pricing} />
-          )}
+          {pricing && !pricing.error && <GreeksPanel pricing={pricing} />}
 
-          {/* Buy Panel */}
-          <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5 space-y-4">
-            <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Order Ticket</div>
+          {/* Buy Ticket */}
+          <div className="rounded-2xl bg-zinc-950 border border-white/[0.08] p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)] space-y-4 font-mono">
+            <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                Options Ticket
+              </span>
+              <span className="text-[10px] text-zinc-500">100x Multiplier</span>
+            </div>
 
             {selectedStrike && selectedExpiry && (
-              <div className="text-xs text-zinc-400 bg-zinc-900 rounded-lg p-3 space-y-1">
+              <div className="text-xs text-zinc-400 bg-zinc-900/60 rounded-xl p-3.5 space-y-1.5 border border-white/[0.04]">
                 <div className="flex justify-between">
-                  <span>Symbol</span><span className="text-white font-bold">{symbol}</span>
+                  <span className="text-zinc-500">Target Asset</span>
+                  <span className="text-zinc-200 font-bold">{symbol}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Type</span>
-                  <span className={`font-bold ${optionType === 'call' ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className="text-zinc-500">Option Type</span>
+                  <span
+                    className={`font-bold ${
+                      optionType === 'call' ? 'text-emerald-400' : 'text-rose-400'
+                    }`}
+                  >
                     {optionType.toUpperCase()}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Strike</span><span className="text-white font-bold">₹{selectedStrike}</span>
+                  <span className="text-zinc-500">Strike Target</span>
+                  <span className="text-zinc-100 font-bold tabular-nums">₹{selectedStrike}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Expiry</span><span className="text-white">{selectedExpiry.date.toLocaleDateString()}</span>
+                  <span className="text-zinc-500">Maturity Date</span>
+                  <span className="text-zinc-300">{selectedExpiry.date.toLocaleDateString()}</span>
                 </div>
               </div>
             )}
 
-            <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Contracts</label>
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">
+                Contract Volume
+              </label>
               <input
                 type="number"
                 min="1"
                 max="100"
                 value={contracts}
-                onChange={e => setContracts(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full h-10 bg-zinc-900 border border-zinc-700 rounded-md px-3 text-sm font-mono text-white outline-none focus:border-zinc-500"
+                onChange={(e) => setContracts(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-full h-10 bg-zinc-900 border border-white/[0.08] focus:border-emerald-500/40 rounded-xl px-3 text-xs font-mono text-zinc-200 outline-none"
               />
-              <p className="text-[10px] text-zinc-600">1 contract = 100 shares</p>
+              <p className="text-[10px] text-zinc-500">1 contract = 100 shares representation</p>
             </div>
 
             {pricing && !pricing.error && (
-              <div className="border-t border-zinc-800 pt-3 space-y-1.5 text-xs">
+              <div className="border-t border-white/[0.06] pt-3 space-y-1.5 text-xs">
                 <div className="flex justify-between text-zinc-400">
-                  <span>Premium / share</span>
-                  <span className="font-mono text-white">₹{pricing.price?.toFixed(4)}</span>
+                  <span>Premium / Share</span>
+                  <span className="text-zinc-200 tabular-nums">₹{pricing.price?.toFixed(4)}</span>
                 </div>
                 <div className="flex justify-between text-zinc-400">
-                  <span>× 100 shares/contract</span>
-                  <span className="font-mono text-white">₹{(pricing.price * 100).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-zinc-400">
-                  <span>× {contracts} contracts</span>
-                  <span className="font-mono text-white font-black text-sm">₹{totalPremium.toFixed(2)}</span>
+                  <span>Notional Cost ({contracts} ctr.)</span>
+                  <span className="text-sm font-bold text-zinc-100 tabular-nums">
+                    ₹{totalPremium.toFixed(2)}
+                  </span>
                 </div>
               </div>
             )}
 
             <button
+              type="button"
               onClick={handleBuy}
               disabled={isBuying || !pricing || !!pricing?.error || !selectedStrike || !selectedExpiry}
-              className={`w-full h-12 rounded-lg font-black text-sm transition-all disabled:opacity-40 ${
+              className={`w-full h-11 rounded-xl font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-40 shadow-lg flex items-center justify-center gap-2 ${
                 optionType === 'call'
-                  ? 'bg-green-700 hover:bg-green-600 text-green-100 border border-green-600'
-                  : 'bg-red-800 hover:bg-red-700 text-red-100 border border-red-700'
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950'
+                  : 'bg-rose-500 hover:bg-rose-400 text-white'
               }`}
             >
-              {isBuying ? 'Placing order...' : `BUY ${contracts} ${optionType.toUpperCase()} — ₹${totalPremium.toFixed(2)}`}
+              {isBuying ? (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  Routing Order...
+                </>
+              ) : (
+                `Buy ${contracts} ${optionType.toUpperCase()} — ₹${totalPremium.toFixed(2)}`
+              )}
             </button>
 
             <AnimatePresence>
@@ -547,8 +628,10 @@ export default function OptionsPage() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className={`text-xs p-3 rounded-lg font-mono overflow-hidden ${
-                    buySuccess ? 'bg-green-900/30 text-green-300 border border-green-800' : 'bg-red-900/30 text-red-300 border border-red-800'
+                  className={`text-xs p-3 rounded-xl font-mono text-center border ${
+                    buySuccess
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
                   }`}
                 >
                   {buyMessage}
@@ -559,12 +642,16 @@ export default function OptionsPage() {
         </div>
       </div>
 
-      {/* ── Positions Table ── */}
-      <div>
-        <h3 className="text-lg font-black tracking-tight mb-4 font-mono text-white">Your Options Positions</h3>
+      {/* Positions Section */}
+      <div className="space-y-4 pt-4 border-t border-white/[0.06]">
+        <h2 className="text-base font-bold font-sans tracking-tight text-zinc-100 flex items-center gap-2">
+          <Layers className="h-4 w-4 text-zinc-400" />
+          Active Options Positions ({positions.length})
+        </h2>
+
         {positions.length === 0 ? (
-          <div className="bg-zinc-950 border border-zinc-800 border-dashed rounded-xl p-12 text-center text-zinc-600 font-mono text-sm">
-            No options positions yet. Select a strike and buy your first contract above.
+          <div className="rounded-2xl border border-dashed border-white/[0.08] p-12 text-center bg-zinc-950/40 text-zinc-500 text-xs font-mono">
+            No derivative options positions open. Calibrate strikes and enter a contract above.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
