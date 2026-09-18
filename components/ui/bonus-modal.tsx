@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import confetti from 'canvas-confetti'
 import { Trophy, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -11,49 +12,14 @@ export function BonusModal() {
   const [bonusAmount, setBonusAmount] = useState(0)
   const supabase = createClient()
 
-  useEffect(() => {
-    let channel: any
-
-    const setupRealtime = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) return
-
-      channel = supabase
-        .channel(`bonus_inserts_${Math.random().toString(36).substring(7)}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'bonus_events',
-            filter: `user_id=eq.${user.id}`,
-          },
-          (payload) => {
-            const amount = payload.new.bonus_amount
-            setBonusAmount(amount)
-            setIsOpen(true)
-            triggerConfetti()
-          }
-        )
-        .subscribe()
-    }
-
-    setupRealtime()
-
-    return () => {
-      if (channel) supabase.removeChannel(channel)
-    }
-  }, [supabase])
-
-  const triggerConfetti = () => {
+  const triggerConfetti = useCallback(() => {
     const duration = 3 * 1000
     const animationEnd = Date.now() + duration
     const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 }
 
     const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min
 
-    const interval: any = setInterval(function() {
+    const interval = setInterval(function() {
       const timeLeft = animationEnd - Date.now()
 
       if (timeLeft <= 0) {
@@ -71,7 +37,42 @@ export function BonusModal() {
         origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
       })
     }, 250)
-  }
+  }, [])
+
+  useEffect(() => {
+    let channel: RealtimeChannel | null = null
+
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) return
+
+      channel = supabase
+        .channel(`bonus_inserts_${Math.random().toString(36).substring(7)}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'bonus_events',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload: { new: { bonus_amount: number } }) => {
+            const amount = payload.new.bonus_amount
+            setBonusAmount(amount)
+            setIsOpen(true)
+            triggerConfetti()
+          }
+        )
+        .subscribe()
+    }
+
+    setupRealtime()
+
+    return () => {
+      if (channel) supabase.removeChannel(channel)
+    }
+  }, [supabase, triggerConfetti])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -110,7 +111,7 @@ export function BonusModal() {
               <div>
                 <h2 className="text-3xl font-black tracking-tight mb-2">Milestone Reached!</h2>
                 <p className="text-muted-foreground">
-                  Your trading strategy is paying off. You've hit a 10% portfolio growth milestone!
+                  Your trading strategy is paying off. You&apos;ve hit a 10% portfolio growth milestone!
                 </p>
               </div>
 

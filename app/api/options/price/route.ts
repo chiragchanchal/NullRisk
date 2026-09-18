@@ -38,7 +38,8 @@ export async function GET(req: NextRequest) {
       riskFreeRate: RISK_FREE_RATE,
       ...result
     })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    const err = error as Error
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }

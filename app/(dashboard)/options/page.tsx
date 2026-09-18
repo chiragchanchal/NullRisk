@@ -1,13 +1,45 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, TrendingUp, TrendingDown, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Search, AlertTriangle, RefreshCw } from 'lucide-react'
 import useSWR from 'swr'
 import { generateStrikes, getExpiryDates } from '@/lib/engine/black-scholes'
 import { AssetLogo } from '@/components/ui/asset-logo'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
+
+interface PricingGreeks {
+  price: number
+  sigma: number
+  intrinsicValue: number
+  timeValue: number
+  delta: number
+  gamma: number
+  theta: number
+  vega: number
+  d1: number
+  d2: number
+  impliedMoneyness: string
+  error?: string
+}
+
+interface OptionPositionItem {
+  id: string
+  symbol: string
+  option_type: 'call' | 'put'
+  strike: number
+  expiry: string
+  contracts: number
+  status: string
+  premium_paid: number
+  currentValue?: number
+  pnl?: number
+  delta?: number
+  gamma?: number
+  theta?: number
+  vega?: number
+}
 
 // ─── Animated Number (Bloomberg pulse) ───────────────────────────────────────
 function BloombergValue({
@@ -16,13 +48,17 @@ function BloombergValue({
   const [prev, setPrev] = useState(value)
   const [pulse, setPulse] = useState(false)
 
+  if (value !== prev) {
+    setPrev(value)
+    setPulse(true)
+  }
+
   useEffect(() => {
-    if (value !== prev) {
-      setPulse(true)
-      const t = setTimeout(() => { setPulse(false); setPrev(value) }, 600)
+    if (pulse) {
+      const t = setTimeout(() => setPulse(false), 600)
       return () => clearTimeout(t)
     }
-  }, [value, prev])
+  }, [pulse])
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -39,7 +75,7 @@ function BloombergValue({
 }
 
 // ─── Greeks Panel ─────────────────────────────────────────────────────────────
-function GreeksPanel({ pricing }: { pricing: any }) {
+function GreeksPanel({ pricing }: { pricing: PricingGreeks | null }) {
   if (!pricing) return null
 
   return (
@@ -95,19 +131,10 @@ function GreeksPanel({ pricing }: { pricing: any }) {
   )
 }
 
-// ─── Moneyness Badge ──────────────────────────────────────────────────────────
-function MoneynessBadge({ strike, spot, type }: { strike: number; spot: number; type: 'call' | 'put' }) {
-  const tol = spot * 0.01
-  const diff = Math.abs(strike - spot)
-  if (diff <= tol) return <span className="text-[10px] font-bold text-yellow-400">ATM</span>
-  const itm = type === 'call' ? spot > strike : spot < strike
-  return <span className={`text-[10px] font-bold ${itm ? 'text-green-400' : 'text-zinc-500'}`}>{itm ? 'ITM' : 'OTM'}</span>
-}
-
 // ─── Position Card ────────────────────────────────────────────────────────────
-function PositionCard({ pos, onClose }: { pos: any; onClose?: (id: string) => Promise<void> }) {
+function PositionCard({ pos, onClose }: { pos: OptionPositionItem; onClose?: (id: string) => Promise<void> }) {
   const [isClosing, setIsClosing] = useState(false)
-  const isProfit = pos.pnl >= 0
+  const isProfit = (pos.pnl ?? 0) >= 0
   const statusColor = pos.status === 'exercised' ? 'text-green-400' : pos.status === 'expired' ? 'text-zinc-500' : 'text-blue-400'
 
   const handleClose = async () => {
@@ -192,21 +219,15 @@ export default function OptionsPage() {
   const [symbol, setSymbol] = useState('AAPL')
   const [symbolInput, setSymbolInput] = useState('AAPL')
   const [optionType, setOptionType] = useState<'call' | 'put'>('call')
-  const [selectedStrike, setSelectedStrike] = useState<number | null>(null)
-  const [selectedExpiry, setSelectedExpiry] = useState<{ label: string; date: Date; T: number } | null>(null)
+  const [selectedExpiry, setSelectedExpiry] = useState<{ label: string; date: Date; T: number } | null>(() => {
+    const dates = getExpiryDates()
+    return dates.length > 0 ? dates[0] : null
+  })
+  const expiryDates = useMemo(() => getExpiryDates(), [])
   const [contracts, setContracts] = useState(1)
   const [isBuying, setIsBuying] = useState(false)
   const [buyMessage, setBuyMessage] = useState('')
   const [buySuccess, setBuySuccess] = useState(false)
-
-  // Expiry dates are computed once on mount
-  const [expiryDates] = useState(() => getExpiryDates())
-
-  useEffect(() => {
-    if (expiryDates.length > 0 && !selectedExpiry) {
-      setSelectedExpiry(expiryDates[0])
-    }
-  }, [expiryDates, selectedExpiry])
 
   // Fetch spot price + strikes whenever symbol changes
   const { data: spotData, isLoading: spotLoading } = useSWR(
@@ -217,17 +238,19 @@ export default function OptionsPage() {
   const spotPrice = spotData?.price || 0
 
   // Generate strikes when spot is known
-  const strikes = spotPrice > 0 ? generateStrikes(spotPrice, 5, spotPrice > 1000 ? 50 : spotPrice > 100 ? 5 : 1) : []
-
-  // Auto-select ATM strike when strikes change
-  useEffect(() => {
-    if (strikes.length > 0 && spotPrice > 0) {
-      const atm = strikes.reduce((prev, curr) =>
-        Math.abs(curr - spotPrice) < Math.abs(prev - spotPrice) ? curr : prev
-      )
-      setSelectedStrike(atm)
-    }
+  const strikes = useMemo(() => {
+    return spotPrice > 0 ? generateStrikes(spotPrice, 5, spotPrice > 1000 ? 50 : spotPrice > 100 ? 5 : 1) : []
   }, [spotPrice])
+
+  const defaultStrike = useMemo(() => {
+    if (strikes.length === 0 || spotPrice <= 0) return null
+    return strikes.reduce((prev, curr) =>
+      Math.abs(curr - spotPrice) < Math.abs(prev - spotPrice) ? curr : prev
+    )
+  }, [strikes, spotPrice])
+
+  const [chosenStrike, setChosenStrike] = useState<number | null>(null)
+  const selectedStrike = chosenStrike ?? defaultStrike
 
   // Fetch BSM pricing whenever inputs change
   const pricingUrl = selectedStrike && selectedExpiry && symbol
@@ -325,13 +348,13 @@ export default function OptionsPage() {
                   type="text"
                   value={symbolInput}
                   onChange={e => setSymbolInput(e.target.value.toUpperCase())}
-                  onKeyDown={e => { if (e.key === 'Enter') setSymbol(symbolInput) }}
+                  onKeyDown={e => { if (e.key === 'Enter') { setChosenStrike(null); setSymbol(symbolInput) } }}
                   placeholder="AAPL, TSLA, NVDA..."
                   className="w-full h-10 bg-zinc-900 border border-zinc-700 rounded-md pl-10 pr-4 text-sm font-mono text-white placeholder:text-zinc-600 outline-none focus:border-zinc-500 transition-colors"
                 />
               </div>
               <button
-                onClick={() => setSymbol(symbolInput)}
+                onClick={() => { setChosenStrike(null); setSymbol(symbolInput) }}
                 className="h-10 sm:px-5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold rounded-md transition-colors w-full sm:w-auto"
               >
                 Load
@@ -392,7 +415,7 @@ export default function OptionsPage() {
                   return (
                     <button
                       key={strike}
-                      onClick={() => setSelectedStrike(strike)}
+                      onClick={() => setChosenStrike(strike)}
                       className={`py-2 px-3 text-xs font-bold rounded-lg border transition-all text-center snap-center shrink-0 min-w-[85px] ${
                         isSelected
                           ? optionType === 'call'
@@ -545,7 +568,7 @@ export default function OptionsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {positions.map((pos: any) => (
+            {positions.map((pos: OptionPositionItem) => (
               <PositionCard key={pos.id} pos={pos} onClose={handleClosePosition} />
             ))}
           </div>

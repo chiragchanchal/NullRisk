@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
   try {
     const price = await getMarketPrice(symbol, assetType)
     return NextResponse.json({ symbol, price })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    const err = error as Error
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }

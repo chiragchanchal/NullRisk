@@ -1,14 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getMarketPrice } from '@/lib/api/market'
-import { getMarketOHLC } from '@/lib/api/market'
 import { calculateBSM } from '@/lib/engine/black-scholes'
-import { calculateHistoricalVolatility } from '@/lib/engine/volatility'
 
 const RISK_FREE_RATE = 0.05
 const CONTRACT_SIZE = 100
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -103,8 +101,9 @@ export async function GET(req: NextRequest) {
     )
 
     return NextResponse.json({ positions: enriched })
-  } catch (error: any) {
-    console.error('Options positions error:', error)
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 })
+  } catch (error: unknown) {
+    const err = error as Error
+    console.error('Options positions error:', err)
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 })
   }
 }

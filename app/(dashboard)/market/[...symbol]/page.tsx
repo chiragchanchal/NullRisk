@@ -65,7 +65,7 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
       borderVisible: false, wickUpColor: '#00C896', wickDownColor: '#FF4D4D',
     })
 
-    const formattedData = [...ohlc].reverse().map((d: any) => ({
+    const formattedData = [...ohlc].reverse().map((d: { time: string; open: number; high: number; low: number; close: number }) => ({
       time: (new Date(d.time).getTime() / 1000) as UTCTimestamp,
       open: d.open, high: d.high, low: d.low, close: d.close,
     }))
@@ -167,7 +167,7 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
           <div>
             <h3 className="text-lg font-semibold mb-4">Latest News</h3>
             <div className="space-y-4">
-              {news && news.length > 0 ? news.map((item: any) => (
+              {news && news.length > 0 ? news.map((item: { id: string | number; url: string; headline: string; summary: string; datetime: number; source: string }) => (
                 <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer"
                   className="block border border-border bg-card p-4 rounded-xl hover:bg-muted/50 transition-colors">
                   <h4 className="font-medium text-foreground">{item.headline}</h4>
@@ -267,7 +267,7 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
               {!isMarginMode && (
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-muted-foreground uppercase">Order Type</label>
-                  <select value={orderClass} onChange={e => setOrderClass(e.target.value as any)}
+                  <select value={orderClass} onChange={e => setOrderClass(e.target.value as 'market' | 'limit')}
                     className="w-full h-10 bg-background rounded-md px-3 text-sm border border-input focus:ring-1 focus:ring-primary outline-none">
                     <option value="market">Market</option>
                     <option value="limit">Limit</option>

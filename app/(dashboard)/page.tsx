@@ -1,7 +1,7 @@
 'use client'
 
 import useSWR from 'swr'
-import { TrendingUp, TrendingDown, RefreshCw, BarChart3, Award, HelpCircle } from 'lucide-react'
+import { TrendingUp, RefreshCw, BarChart3, Award, HelpCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 // SWR fetcher

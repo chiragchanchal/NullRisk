@@ -16,7 +16,9 @@ Never give real financial advice. Keep the entire response under 80 words total.
 function generateSimulatedAnalysis(symbol: string, rsi: number, priceChange14d: number, headlines: string[]) {
   // Sentiment classification based on price change and headlines
   let sentiment = "Neutral"
-  let sentimentReason = "Market is consolidated with standard trading activity."
+  let sentimentReason = headlines.length > 0
+    ? `Recent headlines and steady price action reflect neutral trading consolidation.`
+    : "Market is consolidated with standard trading activity."
   if (priceChange14d > 3) {
     sentiment = "Bullish"
     sentimentReason = `Positive price action and strong volume support upward momentum.`
@@ -118,10 +120,10 @@ export async function POST(req: NextRequest) {
       console.warn("Failed to fetch live market context for symbol:", symbol, e)
     }
 
-    const closes = ohlcData.map((d: any) => d.close)
+    const closes = ohlcData.map((d: { close: number }) => d.close)
     const rsi = closes.length >= 14 ? calculateRSI(closes) : 50
     const priceChange14d = closes.length >= 14 ? calculate14dChange(closes) : 0
-    const headlines = newsData.slice(0, 5).map((n: any) => n.headline).filter(Boolean)
+    const headlines = newsData.slice(0, 5).map((n: { headline: string }) => n.headline).filter(Boolean)
 
     // 4. Build user message
     const userMessage = `
@@ -156,8 +158,9 @@ Provide your 3-bullet analysis.`
           system: SYSTEM_PROMPT,
           messages: [{ role: 'user', content: userMessage }]
         })
-      } catch (error: any) {
-        console.warn("Anthropic API call failed, falling back to high-fidelity simulation:", error.message || error)
+      } catch (error: unknown) {
+        const err = error as Error
+        console.warn("Anthropic API call failed, falling back to high-fidelity simulation:", err.message || err)
       }
     } else {
       console.log("Placeholder or missing Anthropic API key detected. Using high-fidelity simulated streaming fallback.")
@@ -256,8 +259,9 @@ Provide your 3-bullet analysis.`
         }
       })
     }
-  } catch (error: any) {
-    console.error('AI analyze error:', error)
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 })
+  } catch (error: unknown) {
+    const err = error as Error
+    console.error('AI analyze error:', err)
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 })
   }
 }

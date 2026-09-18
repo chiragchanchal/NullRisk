@@ -101,9 +101,10 @@ export function AIAnalystCard({ symbol }: AIAnalystCardProps) {
         accumulated += chunk
         setAnalysis(accumulated)
       }
-    } catch (err: any) {
-      if (err.name !== 'AbortError') {
-        setError(err.message || 'Failed to generate analysis.')
+    } catch (err: unknown) {
+      const error = err as Error
+      if (error?.name !== 'AbortError') {
+        setError(error?.message || 'Failed to generate analysis.')
       }
     } finally {
       setIsLoading(false)

@@ -5,8 +5,37 @@ import { TrendingUp, TrendingDown, RefreshCw, Briefcase, Zap, X } from 'lucide-r
 import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip } from 'recharts'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { AssetLogo } from '@/components/ui/asset-logo'
+
+interface MarginPositionItem {
+  id: string
+  symbol: string
+  asset_type: string
+  quantity: number
+  collateral_amount: number
+  margin_amount: number
+  leverage_ratio: number
+  entry_price: number
+  currentPrice?: number
+  unrealisedPnL: number
+  unrealisedPnLPct?: number
+  marginRatio: number
+  liquidationPrice: number
+}
+
+interface PortfolioHolding {
+  id: string
+  symbol: string
+  asset_type: string
+  quantity: number
+  avg_buy_price: number
+  currentPrice: number
+  currentValue?: number
+  value: number
+  unrealisedPnL: number
+  unrealisedPnLPct: number
+}
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
@@ -28,17 +57,36 @@ export default function PortfolioPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ positionId })
       })
-      const data = await res.json()
       if (res.ok) {
         mutateMargin()
-        alert(data.message)
       } else {
-        alert(data.error)
+        const data = await res.json()
+        alert(data.error || 'Failed to close position.')
       }
+    } catch {
+      alert('Network error while closing position.')
     } finally {
       setClosingPositionId(null)
     }
   }
+
+  const initialBalance = summary?.initialBalance || 500000
+  const totalPortfolioValue = summary?.totalPortfolioValue || 500000
+
+  const chartData = useMemo(() => {
+    const data = []
+    const start = initialBalance
+    const end = totalPortfolioValue
+    const steps = 10
+    const diff = end - start
+    for (let i = 0; i <= steps; i++) {
+      const progress = i / steps
+      const noise = i > 0 && i < steps ? (Math.sin(i * 997) * 0.5) * (Math.abs(diff) * 0.2) : 0
+      data.push({ time: `Day ${i}`, value: start + (diff * progress) + noise })
+    }
+    data[data.length - 1].value = end
+    return data
+  }, [initialBalance, totalPortfolioValue])
 
   if (isLoading) {
     return (
@@ -57,22 +105,6 @@ export default function PortfolioPage() {
     )
   }
 
-  const generateChartData = () => {
-    const data = []
-    const start = summary.initialBalance
-    const end = summary.totalPortfolioValue
-    const steps = 10
-    const diff = end - start
-    for (let i = 0; i <= steps; i++) {
-      const progress = i / steps
-      const noise = i > 0 && i < steps ? (Math.random() - 0.5) * (Math.abs(diff) * 0.2) : 0
-      data.push({ time: `Day ${i}`, value: start + (diff * progress) + noise })
-    }
-    data[data.length - 1].value = end
-    return data
-  }
-
-  const chartData = generateChartData()
   const isPositiveTotal = summary.totalPnLPct >= 0
   const returnProgress = Math.min(100, Math.max(0, summary.totalPnLPct * 10))
 
@@ -107,7 +139,7 @@ export default function PortfolioPage() {
                 <Tooltip
                   contentStyle={{ backgroundColor: 'oklch(0.15 0 0)', borderColor: 'oklch(1 0 0 / 10%)', borderRadius: '8px' }}
                   itemStyle={{ color: isPositiveTotal ? '#00C896' : '#FF4D4D', fontWeight: 'bold' }}
-                  formatter={(val: any) => [`₹${Number(val).toFixed(2)}`, 'Value']}
+                  formatter={(val?: number | string | readonly (number | string)[]) => [`₹${Number(val || 0).toFixed(2)}`, 'Value']}
                   labelStyle={{ display: 'none' }}
                 />
                 <Line type="monotone" dataKey="value"
@@ -191,7 +223,7 @@ export default function PortfolioPage() {
               <Zap className="h-5 w-5 text-yellow-400" /> Open Margin Positions
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {openPositions.map((pos: any) => {
+              {openPositions.map((pos: MarginPositionItem) => {
                 const isProfit = pos.unrealisedPnL >= 0
                 const marginRatio = pos.marginRatio || 0
                 const liquidationPrice = pos.liquidationPrice || 0
@@ -236,7 +268,7 @@ export default function PortfolioPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Current Price</span>
-                        <span className="font-mono">{formatCurrency(pos.currentPrice)}</span>
+                        <span className="font-mono">{formatCurrency(pos.currentPrice || pos.entry_price)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Unrealised P&L</span>
@@ -292,11 +324,11 @@ export default function PortfolioPage() {
         </h3>
         {(!summary.holdings || summary.holdings.length === 0) ? (
           <div className="border border-border border-dashed rounded-xl p-12 text-center text-muted-foreground">
-            You don't own any assets yet. Head over to the Market Explorer to start trading!
+            You don&apos;t own any assets yet. Head over to the Market Explorer to start trading!
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {summary.holdings.map((holding: any) => {
+            {summary.holdings.map((holding: PortfolioHolding) => {
               const isPositive = holding.unrealisedPnLPct >= 0
               return (
                 <div

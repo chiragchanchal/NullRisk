@@ -27,24 +27,25 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   // Fetch username on mount/open
   useEffect(() => {
-    if (isOpen) {
-      setSaveMessage('')
-      setSaveSuccess(false)
-      const fetchProfile = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('id', user.id)
-            .single()
-          if (!error && data) {
-            setUsername(data.username || '')
-            setNewUsername(data.username || '')
-          }
+    if (!isOpen) return
+    let isMounted = true
+    const fetchProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user && isMounted) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', user.id)
+          .single()
+        if (!error && data && isMounted) {
+          setUsername(data.username || '')
+          setNewUsername(data.username || '')
         }
       }
-      fetchProfile()
+    }
+    fetchProfile()
+    return () => {
+      isMounted = false
     }
   }, [isOpen, supabase])
 

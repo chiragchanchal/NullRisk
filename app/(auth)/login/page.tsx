@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { TrendingUp, Mail, ArrowRight, CheckCircle2, Lock, RefreshCw, Eye, EyeOff } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 
 const GoogleIcon = () => (
   <svg className="h-4 w-4 mr-2 shrink-0" viewBox="0 0 24 24" fill="currentColor">
@@ -28,6 +28,7 @@ const GoogleIcon = () => (
 )
 
 function LoginForm() {
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -36,17 +37,9 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(() => searchParams.get('error'))
 
   const supabase = createClient()
-  const searchParams = useSearchParams()
-
-  useEffect(() => {
-    const err = searchParams.get('error')
-    if (err) {
-      setError(err)
-    }
-  }, [searchParams])
 
   const handleGoogleAuth = async () => {
     setGoogleLoading(true)

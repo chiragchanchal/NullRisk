@@ -15,8 +15,8 @@ export function calculateRSI(closes: number[], period = 14): number {
     changes.push(relevant[i] - relevant[i + 1]) // newest first, so i is newer
   }
 
-  let avgGain = changes.slice(0, period).reduce((sum, c) => sum + Math.max(0, c), 0) / period
-  let avgLoss = changes.slice(0, period).reduce((sum, c) => sum + Math.max(0, -c), 0) / period
+  const avgGain = changes.slice(0, period).reduce((sum, c) => sum + Math.max(0, c), 0) / period
+  const avgLoss = changes.slice(0, period).reduce((sum, c) => sum + Math.max(0, -c), 0) / period
 
   if (avgLoss === 0) return 100
   const rs = avgGain / avgLoss

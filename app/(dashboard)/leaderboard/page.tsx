@@ -4,6 +4,13 @@ import useSWR from 'swr'
 import { Trophy, Medal, Clock, Copy } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
+interface LeaderboardUser {
+  user_id: string
+  username: string
+  weekly_return_pct: number
+  total_return_pct: number
+}
+
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 export default function LeaderboardPage() {
@@ -50,7 +57,7 @@ export default function LeaderboardPage() {
         const err = await res.json()
         alert(`Error: ${err.error}`)
       }
-    } catch (e) {
+    } catch {
       alert('Failed to copy trader.')
     } finally {
       setIsCopying(null)
@@ -101,7 +108,7 @@ export default function LeaderboardPage() {
             </tr>
           </thead>
           <tbody>
-            {leaderboard.map((user: any, index: number) => {
+            {leaderboard.map((user: LeaderboardUser, index: number) => {
               const isPositiveTotal = user.total_return_pct >= 0
               const isPositiveWeekly = user.weekly_return_pct >= 0
               let RankIcon = null

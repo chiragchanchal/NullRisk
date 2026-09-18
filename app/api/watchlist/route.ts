@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getMarketPrice } from '@/lib/api/market'
+import { getMarketPrice, AssetType } from '@/lib/api/market'
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -22,17 +22,18 @@ export async function GET(req: NextRequest) {
     const enriched = await Promise.all(
       (watchlist || []).map(async (item) => {
         try {
-          const price = await getMarketPrice(item.symbol, item.asset_type as any)
+          const price = await getMarketPrice(item.symbol, item.asset_type as AssetType)
           return { ...item, price }
-        } catch (e) {
+        } catch {
           return { ...item, price: null }
         }
       })
     )
 
     return NextResponse.json(enriched)
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal Server Error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
@@ -47,8 +48,8 @@ export async function POST(req: NextRequest) {
 
     const { symbol, assetType } = await req.json()
 
-    if (!symbol || !assetType) {
-      return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
+    if (!symbol || typeof symbol !== 'string' || !assetType || typeof assetType !== 'string') {
+      return NextResponse.json({ error: 'Missing or invalid parameters' }, { status: 400 })
     }
 
     // Toggle watchlist logic: check if exists
@@ -78,7 +79,8 @@ export async function POST(req: NextRequest) {
       if (insertError) throw insertError
       return NextResponse.json({ success: true, action: 'added' })
     }
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal Server Error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

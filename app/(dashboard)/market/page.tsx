@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Star, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react'
 import { AssetLogo } from '@/components/ui/asset-logo'
@@ -192,7 +192,7 @@ export default function MarketExplorer() {
         const res = await fetch('/api/watchlist')
         const data = await res.json()
         if (res.ok) {
-          setWatchlist(data.map((item: any) => item.symbol))
+          setWatchlist(data.map((item: { symbol: string }) => item.symbol))
         }
       } catch (e) {
         console.error('Failed to fetch watchlist:', e)
@@ -222,51 +222,49 @@ export default function MarketExplorer() {
   }
 
   // Filter assets based on search and active tab
-  const filteredAssets = POPULAR_ASSETS.filter((asset) => {
-    const matchesSearch = asset.symbol.toLowerCase().includes(search.toLowerCase()) || 
-                          asset.name.toLowerCase().includes(search.toLowerCase())
-    const matchesTab = activeTab === 'all' || asset.type === activeTab
-    return matchesSearch && matchesTab
-  })
-
-  // Reset to page 1 when search or tab changes
-  useEffect(() => {
-    setCurrentPage(1)
+  const filteredAssets = useMemo(() => {
+    return POPULAR_ASSETS.filter((asset) => {
+      const matchesSearch = asset.symbol.toLowerCase().includes(search.toLowerCase()) || 
+                            asset.name.toLowerCase().includes(search.toLowerCase())
+      const matchesTab = activeTab === 'all' || asset.type === activeTab
+      return matchesSearch && matchesTab
+    })
   }, [search, activeTab])
 
   // Paginated visible assets list
   const totalPages = Math.ceil(filteredAssets.length / pageSize)
   const startIdx = (currentPage - 1) * pageSize
-  const visibleAssets = filteredAssets.slice(startIdx, startIdx + pageSize)
-
-  // Fetch prices only for currently visible assets on interval
-  const visibleAssetString = JSON.stringify(visibleAssets.map(a => a.symbol))
+  const visibleAssets = useMemo(() => {
+    return filteredAssets.slice(startIdx, startIdx + pageSize)
+  }, [filteredAssets, startIdx, pageSize])
 
   useEffect(() => {
     if (visibleAssets.length === 0) return
 
     const fetchPrices = async () => {
-      const newPrices = { ...prices }
+      const updates: Record<string, number> = {}
       await Promise.all(
         visibleAssets.map(async (asset) => {
           try {
             const res = await fetch(`/api/market/quote?symbol=${asset.symbol}&assetType=${asset.type}`)
             const data = await res.json()
             if (data.price) {
-              newPrices[asset.symbol] = data.price
+              updates[asset.symbol] = data.price
             }
           } catch (e) {
             console.error(`Failed to fetch price for ${asset.symbol}`, e)
           }
         })
       )
-      setPrices(newPrices)
+      setPrices(prev => ({ ...prev, ...updates }))
     }
 
     fetchPrices()
     const interval = setInterval(fetchPrices, 15000)
     return () => clearInterval(interval)
-  }, [visibleAssetString])
+  }, [visibleAssets])
+
+  const tabs: Array<'all' | 'stock' | 'crypto' | 'forex'> = ['all', 'stock', 'crypto', 'forex']
 
   return (
     <div className="space-y-6">
@@ -278,10 +276,13 @@ export default function MarketExplorer() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         {/* Tabs */}
         <div className="flex space-x-1 bg-muted p-1 rounded-lg overflow-x-auto max-w-full">
-          {['all', 'stock', 'crypto', 'forex'].map((tab) => (
+          {tabs.map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab as any)}
+              onClick={() => {
+                setActiveTab(tab)
+                setCurrentPage(1)
+              }}
               className={`px-4 py-1.5 rounded-md text-sm font-medium capitalize transition-colors ${
                 activeTab === tab ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}
@@ -298,7 +299,10 @@ export default function MarketExplorer() {
             type="text"
             placeholder="Search assets..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setCurrentPage(1)
+            }}
             className="w-full h-10 bg-background rounded-md pl-10 pr-4 text-sm outline-none focus:ring-1 focus:ring-primary border border-input"
           />
         </div>

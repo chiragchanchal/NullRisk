@@ -2,45 +2,56 @@
 
 export type AssetType = 'stock' | 'crypto' | 'forex'
 
+export interface OHLCValue {
+  datetime: string
+  open: string
+  high: string
+  low: string
+  close: string
+}
+
 const priceCache = new Map<string, { price: number; timestamp: number }>()
 const CACHE_TTL_MS = 60000 // 1 minute cache
 
 // 1. Fetch Real-time Quotes (Finnhub for Stocks, CoinGecko for Crypto, ExchangeRate for Forex)
 export async function getMarketPrice(symbol: string, assetType: AssetType): Promise<number> {
-  const cacheKey = `${assetType}-${symbol}`
+  const safeSymbol = encodeURIComponent(symbol.trim())
+  const cacheKey = `${assetType}-${safeSymbol}`
   const cached = priceCache.get(cacheKey)
 
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.price
   }
-// try
+
   let price = 0
 
   try {
     if (assetType === 'crypto') {
-      const searchRes = await fetch(`https://api.coingecko.com/api/v3/search?query=${symbol}`)
+      const searchRes = await fetch(`https://api.coingecko.com/api/v3/search?query=${safeSymbol}`)
       const searchData = await searchRes.json()
       
       if (searchData.coins && searchData.coins.length > 0) {
-        const coinId = searchData.coins[0].id
+        const coinId = encodeURIComponent(searchData.coins[0].id)
         const priceRes = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd`)
         const priceData = await priceRes.json()
         price = priceData[coinId]?.usd || 0
       } else {
-        price = await fetchFinnhubPrice(symbol) // Fallback to Finnhub for crypto like BINANCE:BTCUSDT
+        price = await fetchFinnhubPrice(safeSymbol)
       }
     } else if (assetType === 'forex') {
       const parts = symbol.split('/')
       if (parts.length === 2) {
-        const res = await fetch(`https://v6.exchangerate-api.com/v6/${process.env.EXCHANGE_RATE_API_KEY}/pair/${parts[0]}/${parts[1]}`)
+        const from = encodeURIComponent(parts[0].trim())
+        const to = encodeURIComponent(parts[1].trim())
+        const res = await fetch(`https://v6.exchangerate-api.com/v6/${process.env.EXCHANGE_RATE_API_KEY}/pair/${from}/${to}`)
         const data = await res.json()
-        price = data.conversion_rate || await fetchFinnhubPrice(symbol)
+        price = data.conversion_rate || await fetchFinnhubPrice(safeSymbol)
       } else {
-        price = await fetchFinnhubPrice(symbol)
+        price = await fetchFinnhubPrice(safeSymbol)
       }
     } else {
       // Stocks via Finnhub
-      price = await fetchFinnhubPrice(symbol)
+      price = await fetchFinnhubPrice(safeSymbol)
     }
 
     if (price > 0) {
@@ -58,7 +69,8 @@ export async function getMarketPrice(symbol: string, assetType: AssetType): Prom
 
 async function fetchFinnhubPrice(symbol: string): Promise<number> {
   const apiKey = process.env.FINNHUB_API_KEY
-  const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`)
+  const safeSymbol = encodeURIComponent(symbol.trim())
+  const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${safeSymbol}&token=${apiKey}`)
   const data = await res.json()
   return data.c ? parseFloat(data.c) : 0
 }
@@ -66,11 +78,12 @@ async function fetchFinnhubPrice(symbol: string): Promise<number> {
 // 2. Fetch OHLC Data for Charts (Twelve Data)
 export async function getMarketOHLC(symbol: string, interval: string = '1day', outputsize: number = 30) {
   const apiKey = process.env.TWELVE_DATA_API_KEY
-  const res = await fetch(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}&apikey=${apiKey}`)
+  const safeSymbol = encodeURIComponent(symbol.trim())
+  const res = await fetch(`https://api.twelvedata.com/time_series?symbol=${safeSymbol}&interval=${interval}&outputsize=${outputsize}&apikey=${apiKey}`)
   const data = await res.json()
   
-  if (data.values) {
-    return data.values.map((v: any) => ({
+  if (data.values && Array.isArray(data.values)) {
+    return data.values.map((v: OHLCValue) => ({
       time: v.datetime,
       open: parseFloat(v.open),
       high: parseFloat(v.high),
@@ -84,12 +97,13 @@ export async function getMarketOHLC(symbol: string, interval: string = '1day', o
 // 3. Fetch News (Finnhub)
 export async function getMarketNews(symbol: string) {
   const apiKey = process.env.FINNHUB_API_KEY
+  const safeSymbol = encodeURIComponent(symbol.trim())
   const to = new Date().toISOString().split('T')[0]
   const fromDate = new Date()
   fromDate.setDate(fromDate.getDate() - 7)
   const from = fromDate.toISOString().split('T')[0]
 
-  const res = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${from}&to=${to}&token=${apiKey}`)
+  const res = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${safeSymbol}&from=${from}&to=${to}&token=${apiKey}`)
   const data = await res.json()
   return Array.isArray(data) ? data.slice(0, 10) : []
 }

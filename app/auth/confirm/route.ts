@@ -9,7 +9,10 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type') as EmailOtpType | null
-  const next = searchParams.get('next') ?? '/'
+  let next = searchParams.get('next') ?? '/'
+  if (!next.startsWith('/') || next.startsWith('//') || next.includes(':')) {
+    next = '/'
+  }
 
   if (code || (token_hash && type)) {
     const cookieStore = await cookies()

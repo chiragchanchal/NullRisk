@@ -1,7 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-export async function GET(req: NextRequest) {
+interface LeaderboardEntry {
+  user_id: string
+  username: string
+  total_return_pct: number
+  weekly_return_pct: number
+}
+
+export async function GET() {
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -10,12 +17,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    let leaderboardData = null
+    let leaderboardData: LeaderboardEntry[] | null = null
 
     try {
       const { data, error } = await supabase.rpc('get_leaderboard')
       if (!error && data) {
-        leaderboardData = data
+        leaderboardData = data as LeaderboardEntry[]
       }
     } catch (rpcError) {
       console.warn('RPC get_leaderboard failed, using JS fallback:', rpcError)
@@ -31,7 +38,7 @@ export async function GET(req: NextRequest) {
         throw profileError
       }
 
-      const { data: holdings, error: holdingsError } = await supabase
+      const { data: holdings } = await supabase
         .from('holdings')
         .select('user_id, quantity, avg_buy_price')
 
@@ -55,12 +62,13 @@ export async function GET(req: NextRequest) {
       })
 
       // Sort by total_return_pct desc
-      leaderboardData.sort((a: any, b: any) => b.total_return_pct - a.total_return_pct)
+      leaderboardData.sort((a: LeaderboardEntry, b: LeaderboardEntry) => b.total_return_pct - a.total_return_pct)
     }
 
     return NextResponse.json(leaderboardData)
-  } catch (error: any) {
-    console.error('Leaderboard fetch error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    const err = error as Error
+    console.error('Leaderboard fetch error:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }

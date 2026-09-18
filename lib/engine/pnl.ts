@@ -54,7 +54,6 @@ export async function calculatePortfolioValue(supabase: SupabaseClient, userId: 
   }
 
   let totalHoldingsValue = 0
-  let totalHoldingsCost = 0
   let totalHoldingsUnrealisedPnL = 0
 
   // 3. Fetch current prices and calculate Spot Holdings PnL
@@ -66,7 +65,6 @@ export async function calculatePortfolioValue(supabase: SupabaseClient, userId: 
       const unrealisedPnL = value - costBasis
 
       totalHoldingsValue += value
-      totalHoldingsCost += costBasis
       totalHoldingsUnrealisedPnL += unrealisedPnL
 
       return {
@@ -80,7 +78,6 @@ export async function calculatePortfolioValue(supabase: SupabaseClient, userId: 
       console.error(`Failed to calculate PnL for holding ${holding.symbol}:`, e)
       const costBasis = holding.avg_buy_price * holding.quantity
       totalHoldingsValue += costBasis
-      totalHoldingsCost += costBasis
       return {
         ...holding,
         currentPrice: holding.avg_buy_price,
@@ -101,7 +98,6 @@ export async function calculatePortfolioValue(supabase: SupabaseClient, userId: 
     .eq('status', 'open')
 
   let totalOptionsValue = 0
-  let totalOptionsCost = 0
   let totalOptionsUnrealisedPnL = 0
 
   if (optionsPositions && optionsPositions.length > 0) {
@@ -123,12 +119,10 @@ export async function calculatePortfolioValue(supabase: SupabaseClient, userId: 
         const unrealisedPnL = currentValue - costBasis
 
         totalOptionsValue += currentValue
-        totalOptionsCost += costBasis
         totalOptionsUnrealisedPnL += unrealisedPnL
       } catch (e) {
         console.error(`Failed to calculate PnL for option ${pos.symbol}:`, e)
         totalOptionsValue += pos.premium_paid
-        totalOptionsCost += pos.premium_paid
       }
     })
     await Promise.all(optionsPromises)
@@ -142,7 +136,6 @@ export async function calculatePortfolioValue(supabase: SupabaseClient, userId: 
     .eq('status', 'open')
 
   let totalMarginValue = 0
-  let totalMarginCost = 0
   let totalMarginUnrealisedPnL = 0
 
   if (marginPositions && marginPositions.length > 0) {
@@ -154,15 +147,12 @@ export async function calculatePortfolioValue(supabase: SupabaseClient, userId: 
         const unrealisedPnL = currentValue - totalInvested
 
         const marginBalance = pos.collateral_amount + unrealisedPnL
-        const costBasis = pos.collateral_amount
 
         totalMarginValue += Math.max(0, marginBalance)
-        totalMarginCost += costBasis
         totalMarginUnrealisedPnL += unrealisedPnL
       } catch (e) {
         console.error(`Failed to calculate PnL for margin ${pos.symbol}:`, e)
         totalMarginValue += pos.collateral_amount
-        totalMarginCost += pos.collateral_amount
       }
     })
     await Promise.all(marginPromises)

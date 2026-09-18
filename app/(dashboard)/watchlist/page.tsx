@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Star, TrendingUp, TrendingDown, ArrowRight, RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import useSWR from 'swr'
 import { AssetLogo } from '@/components/ui/asset-logo'
 
 interface WatchlistItem {
@@ -12,6 +13,8 @@ interface WatchlistItem {
   asset_type: 'stock' | 'crypto' | 'forex'
   price: number | null
 }
+
+const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 const getStableMockChange = (symbol: string) => {
   let hash = 0
@@ -24,34 +27,16 @@ const getStableMockChange = (symbol: string) => {
 
 export default function WatchlistPage() {
   const router = useRouter()
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [toggling, setToggling] = useState<string | null>(null)
 
-  const fetchWatchlist = async () => {
-    try {
-      const res = await fetch('/api/watchlist')
-      const data = await res.json()
-      if (res.ok) {
-        setWatchlist(data)
-        setError(null)
-      } else {
-        setError(data.error || 'Failed to load watchlist')
-      }
-    } catch (e: any) {
-      setError(e.message || 'Connection error')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: rawWatchlist, error, isLoading, mutate } = useSWR<WatchlistItem[]>(
+    '/api/watchlist',
+    fetcher,
+    { refreshInterval: 15000 }
+  )
 
-  useEffect(() => {
-    fetchWatchlist()
-    const interval = setInterval(fetchWatchlist, 15000)
-    return () => clearInterval(interval)
-  }, [])
+  const watchlist = Array.isArray(rawWatchlist) ? rawWatchlist : []
 
   const handleRemove = async (symbol: string, assetType: string) => {
     setToggling(symbol)
@@ -62,7 +47,7 @@ export default function WatchlistPage() {
         body: JSON.stringify({ symbol, assetType })
       })
       if (res.ok) {
-        setWatchlist(prev => prev.filter(item => item.symbol !== symbol))
+        mutate((prev) => (prev || []).filter(item => item.symbol !== symbol), false)
       }
     } catch (e) {
       console.error(e)
@@ -75,13 +60,15 @@ export default function WatchlistPage() {
     item.symbol.toLowerCase().includes(search.toLowerCase())
   )
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full min-h-[50vh] text-muted-foreground">
         <RefreshCw className="h-8 w-8 animate-spin" />
       </div>
     )
   }
+
+  const errorMessage = error ? (error.message || 'Connection error') : null
 
   return (
     <div className="space-y-6">
@@ -90,13 +77,13 @@ export default function WatchlistPage() {
         <p className="text-muted-foreground">Monitor and quickly access your favorite assets.</p>
       </div>
 
-      {error && (
+      {errorMessage && (
         <div className="p-4 text-loss bg-loss/10 border border-loss/20 rounded-xl">
-          {error}
+          {errorMessage}
         </div>
       )}
 
-      {!error && watchlist.length === 0 ? (
+      {!errorMessage && watchlist.length === 0 ? (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}

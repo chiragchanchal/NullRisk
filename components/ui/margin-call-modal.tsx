@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion'
 import { AlertTriangle, X } from 'lucide-react'
 
@@ -32,6 +33,13 @@ interface MarginCallInfo {
   closedAt: string
 }
 
+interface LiquidatedPositionPayload {
+  symbol: string
+  status: string
+  collateral_amount?: number
+  closed_at: string
+}
+
 export function MarginCallModal() {
   const [isOpen, setIsOpen] = useState(false)
   const [callInfo, setCallInfo] = useState<MarginCallInfo | null>(null)
@@ -39,7 +47,7 @@ export function MarginCallModal() {
   const supabase = createClient()
 
   useEffect(() => {
-    let channel: any
+    let channel: RealtimeChannel | null = null
 
     const setupRealtime = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -55,8 +63,8 @@ export function MarginCallModal() {
             table: 'margin_positions',
             filter: `user_id=eq.${user.id}`,
           },
-          (payload) => {
-            const updated = payload.new as any
+          (payload: { new: LiquidatedPositionPayload }) => {
+            const updated = payload.new
             // Only fire if this update set status to 'liquidated'
             if (updated.status === 'liquidated') {
               const collateral = updated.collateral_amount || 0

@@ -14,27 +14,60 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { targetUserId } = body
 
-    if (!targetUserId || targetUserId === user.id) {
-      return NextResponse.json({ error: 'Invalid target user' }, { status: 400 })
+    if (!targetUserId || typeof targetUserId !== 'string' || !/^[0-9a-fA-F-]{36}$/.test(targetUserId) || targetUserId === user.id) {
+      return NextResponse.json({ error: 'Invalid target user ID' }, { status: 400 })
     }
 
-    // Step 1: Fetch Current User Profile & Holdings
-    const { data: myProfile } = await supabase.from('profiles').select('mock_balance').eq('id', user.id).single()
-    const { data: myHoldings } = await supabase.from('holdings').select('*').eq('user_id', user.id)
+    const adminClient = createAdminClient()
+
+    // Step 1: Pre-validate Target User Profile & Holdings BEFORE altering caller state
+    const { data: targetProfile } = await adminClient
+      .from('profiles')
+      .select('mock_balance')
+      .eq('id', targetUserId)
+      .single()
+
+    if (!targetProfile) {
+      return NextResponse.json({ error: 'Target trader not found' }, { status: 404 })
+    }
+
+    const { data: targetHoldings } = await adminClient
+      .from('holdings')
+      .select('*')
+      .eq('user_id', targetUserId)
+
+    let targetTotalValue = Number(targetProfile.mock_balance)
+    const targetAssetValues: Record<string, { type: string, value: number, price: number }> = {}
+
+    if (targetHoldings && targetHoldings.length > 0) {
+      for (const holding of targetHoldings) {
+        const currentPrice = await getMarketPrice(holding.symbol, holding.asset_type as AssetType)
+        const value = currentPrice * Number(holding.quantity)
+        targetTotalValue += value
+        targetAssetValues[holding.symbol] = { type: holding.asset_type, value, price: currentPrice }
+      }
+    }
+
+    if (targetTotalValue <= 0 || Object.keys(targetAssetValues).length === 0) {
+      return NextResponse.json({ error: 'Target trader has no active positions or portfolio value to copy.' }, { status: 400 })
+    }
+
+    // Step 2: Fetch Caller's Current Profile & Holdings
+    const { data: myProfile } = await adminClient.from('profiles').select('mock_balance').eq('id', user.id).single()
+    const { data: myHoldings } = await adminClient.from('holdings').select('*').eq('user_id', user.id)
     
     if (!myProfile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
 
-    let myTotalCash = myProfile.mock_balance
+    let myTotalCash = Number(myProfile.mock_balance)
 
-    // Step 2: Liquidate Current User's Holdings (Sell all at market price)
+    // Step 3: Liquidate Caller's Current Holdings into cash
     if (myHoldings && myHoldings.length > 0) {
       for (const holding of myHoldings) {
         const currentPrice = await getMarketPrice(holding.symbol, holding.asset_type as AssetType)
-        const totalSellValue = currentPrice * holding.quantity
+        const totalSellValue = currentPrice * Number(holding.quantity)
         myTotalCash += totalSellValue
 
-        // Log transaction
-        await supabase.from('transactions').insert({
+        await adminClient.from('transactions').insert({
           user_id: user.id,
           symbol: holding.symbol,
           asset_type: holding.asset_type,
@@ -46,55 +79,22 @@ export async function POST(req: NextRequest) {
           total: totalSellValue
         })
       }
-      // Delete old holdings
-      await supabase.from('holdings').delete().eq('user_id', user.id)
+      await adminClient.from('holdings').delete().eq('user_id', user.id)
     }
 
-    // Update balance to full cash
-    await supabase.from('profiles').update({ mock_balance: myTotalCash }).eq('id', user.id)
-
-    // Step 3: Fetch Target User Profile & Holdings (Bypassing RLS since target user details are private by default)
-    const adminSupabase = createAdminClient()
-    const { data: targetProfile } = await adminSupabase.from('profiles').select('mock_balance').eq('id', targetUserId).single()
-    const { data: targetHoldings } = await adminSupabase.from('holdings').select('*').eq('user_id', targetUserId)
-
-    if (!targetProfile) {
-      return NextResponse.json({ error: 'Target profile not found' }, { status: 404 })
-    }
-
-    // Step 4: Calculate Target Portfolio Composition
-    let targetTotalValue = targetProfile.mock_balance
-    const targetAssetValues: Record<string, { type: string, value: number, price: number }> = {}
-
-    if (targetHoldings && targetHoldings.length > 0) {
-      for (const holding of targetHoldings) {
-        const currentPrice = await getMarketPrice(holding.symbol, holding.asset_type as AssetType)
-        const value = currentPrice * holding.quantity
-        targetTotalValue += value
-        targetAssetValues[holding.symbol] = { type: holding.asset_type, value, price: currentPrice }
-      }
-    }
-
-    if (targetTotalValue <= 0) {
-      return NextResponse.json({ error: 'Target trader portfolio has no assets or balance to copy.' }, { status: 400 })
-    }
-
-    // Step 5: Buy Assets Proportionally
+    // Step 4: Buy Target Assets Proportionally
     let remainingCash = myTotalCash
 
     for (const symbol in targetAssetValues) {
       const asset = targetAssetValues[symbol]
       const allocationPct = asset.value / targetTotalValue
       const amountToInvest = myTotalCash * allocationPct
-      
       const quantityToBuy = amountToInvest / asset.price
 
       if (quantityToBuy > 0) {
-        // Deduct from remaining cash
         remainingCash -= amountToInvest
 
-        // Log transaction
-        await supabase.from('transactions').insert({
+        await adminClient.from('transactions').insert({
           user_id: user.id,
           symbol: symbol,
           asset_type: asset.type,
@@ -106,8 +106,7 @@ export async function POST(req: NextRequest) {
           total: amountToInvest
         })
 
-        // Insert holding
-        await supabase.from('holdings').insert({
+        await adminClient.from('holdings').insert({
           user_id: user.id,
           symbol: symbol,
           asset_type: asset.type,
@@ -117,12 +116,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Update final balance
-    await supabase.from('profiles').update({ mock_balance: remainingCash }).eq('id', user.id)
+    // Update caller's final balance
+    await adminClient.from('profiles').update({ mock_balance: remainingCash }).eq('id', user.id)
 
     return NextResponse.json({ success: true, message: 'Successfully copied portfolio!' })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal Server Error'
     console.error('Copy trader error:', error)
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

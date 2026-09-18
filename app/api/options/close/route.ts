@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getMarketPrice } from '@/lib/api/market'
 import { calculateBSM } from '@/lib/engine/black-scholes'
 
@@ -13,10 +13,14 @@ export async function POST(req: NextRequest) {
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { positionId } = await req.json()
-    if (!positionId) return NextResponse.json({ error: 'positionId required' }, { status: 400 })
+    if (!positionId || typeof positionId !== 'string') {
+      return NextResponse.json({ error: 'Valid positionId required' }, { status: 400 })
+    }
+
+    const adminClient = createAdminClient()
 
     // 1. Fetch position details
-    const { data: pos, error: fetchError } = await supabase
+    const { data: pos, error: fetchError } = await adminClient
       .from('options_positions')
       .select('*')
       .eq('id', positionId)
@@ -37,44 +41,63 @@ export async function POST(req: NextRequest) {
 
     // 2. Fetch current market price
     const S = await getMarketPrice(pos.symbol, 'stock')
-    const sigma = pos.iv_at_entry
+    const sigma = Number(pos.iv_at_entry)
 
     // 3. Compute BSM premium to determine current value
     const bsm = calculateBSM({
-      S, K: pos.strike, T, r: RISK_FREE_RATE, sigma,
+      S, K: Number(pos.strike), T, r: RISK_FREE_RATE, sigma,
       type: pos.option_type as 'call' | 'put'
     })
 
     const currentPremium = bsm.price
-    const currentValue = currentPremium * CONTRACT_SIZE * pos.contracts
-    const pnl = currentValue - pos.premium_paid
+    const currentValue = currentPremium * CONTRACT_SIZE * Number(pos.contracts)
+    const pnl = currentValue - Number(pos.premium_paid)
 
-    // 4. Update user profile mock_balance
-    const { data: profile } = await supabase
+    // 4. Atomically transition status from 'open' to 'closed' to prevent double-close race condition
+    const { data: updatedPos, error: posUpdateError } = await adminClient
+      .from('options_positions')
+      .update({
+        status: 'closed',
+        profit_loss: pnl,
+        settled_at: now.toISOString()
+      })
+      .eq('id', positionId)
+      .eq('user_id', user.id)
+      .eq('status', 'open')
+      .select()
+      .single()
+
+    if (posUpdateError || !updatedPos) {
+      return NextResponse.json({ error: 'Position already closed or concurrently modified' }, { status: 400 })
+    }
+
+    // 5. Credit refund to user mock_balance
+    const { data: profile } = await adminClient
       .from('profiles')
       .select('mock_balance')
       .eq('id', user.id)
       .single()
 
-    if (!profile) {
-      return NextResponse.json({ error: 'User profile not found' }, { status: 404 })
-    }
+    const currentBal = profile ? Number(profile.mock_balance) : 0
+    const newBalance = currentBal + currentValue
 
-    const newBalance = profile.mock_balance + currentValue
+    await adminClient
+      .from('profiles')
+      .update({ mock_balance: newBalance })
+      .eq('id', user.id)
 
-    // 5. Commit balance update and mark position as closed/exercised
-    const [balanceRes, positionRes] = await Promise.all([
-      supabase.from('profiles').update({ mock_balance: newBalance }).eq('id', user.id),
-      supabase.from('options_positions').update({
-        status: 'exercised',
-        profit_loss: pnl,
-        settled_at: now.toISOString()
-      }).eq('id', positionId)
-    ])
-
-    if (balanceRes.error || positionRes.error) {
-      return NextResponse.json({ error: 'Failed to update transaction' }, { status: 500 })
-    }
+    // 6. Log transaction
+    await adminClient.from('transactions').insert({
+      user_id: user.id,
+      symbol: pos.symbol,
+      asset_type: 'stock',
+      order_type: 'sell',
+      order_class: 'market',
+      status: 'completed',
+      quantity: pos.contracts,
+      price: currentPremium * CONTRACT_SIZE,
+      total: currentValue
+    })
 
     return NextResponse.json({
       success: true,
@@ -82,8 +105,9 @@ export async function POST(req: NextRequest) {
       newBalance,
       pnl
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal Server Error'
     console.error('Close option position error:', error)
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

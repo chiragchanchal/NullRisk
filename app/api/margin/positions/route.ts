@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getMarketPrice, AssetType } from '@/lib/api/market'
 
 function getMMR(leverage: number): number {
@@ -10,14 +10,16 @@ function getMMR(leverage: number): number {
   return 0.15
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const adminClient = createAdminClient()
+
     // 1. Fetch all open margin positions
-    const { data: positions } = await supabase
+    const { data: positions } = await adminClient
       .from('margin_positions')
       .select('*')
       .eq('user_id', user.id)
@@ -28,38 +30,38 @@ export async function GET(req: NextRequest) {
     }
 
     // 2. Enrich each position with live data and check for margin calls
-    const marginCallPositions: any[] = []
+    const marginCallPositions: unknown[] = []
     let totalExposure = 0
     let totalCollateral = 0
 
     const enriched = await Promise.all(
       positions.map(async (pos) => {
         const currentPrice = await getMarketPrice(pos.symbol, pos.asset_type as AssetType)
-        const currentValue = currentPrice * pos.quantity
-        const totalInvested = pos.collateral_amount + pos.margin_amount
+        const currentValue = currentPrice * Number(pos.quantity)
+        const totalInvested = Number(pos.collateral_amount) + Number(pos.margin_amount)
         const unrealisedPnL = currentValue - totalInvested
         const unrealisedPnLPct = (unrealisedPnL / totalInvested) * 100
 
-        totalExposure += pos.margin_amount
-        totalCollateral += pos.collateral_amount
+        totalExposure += Number(pos.margin_amount)
+        totalCollateral += Number(pos.collateral_amount)
 
-        // Binance-Style Calculations
-        const mm = getMMR(pos.leverage_ratio)
-        const marginBalance = pos.collateral_amount + unrealisedPnL
+        // Calculations
+        const mm = getMMR(Number(pos.leverage_ratio))
+        const marginBalance = Number(pos.collateral_amount) + unrealisedPnL
         const maintenanceMargin = currentValue * mm
         
         // Margin Ratio: (Maintenance Margin / Margin Balance) * 100. If >= 100%, liquidate.
         const marginRatio = marginBalance > 0 ? (maintenanceMargin / marginBalance) * 100 : 100
         
         // Precise Liquidation Price: (EntryPrice * Qty - Collateral) / (Qty * (1 - MMR))
-        const liquidationPrice = Math.max(0, (pos.entry_price * pos.quantity - pos.collateral_amount) / (pos.quantity * (1 - mm)))
+        const liquidationPrice = Math.max(0, (Number(pos.entry_price) * Number(pos.quantity) - Number(pos.collateral_amount)) / (Number(pos.quantity) * (1 - mm)))
 
         const isMarginCall = marginBalance <= maintenanceMargin
 
         if (isMarginCall) {
-          // Auto-liquidate via API call
+          // Auto-liquidate via service-role API call
           try {
-            await supabase.rpc('liquidate_margin_position', {
+            await adminClient.rpc('liquidate_margin_position', {
               p_position_id: pos.id,
               p_user_id: user.id,
               p_close_price: currentPrice
@@ -67,26 +69,25 @@ export async function GET(req: NextRequest) {
           } catch (rpcErr) {
             console.error('RPC liquidation failed, falling back to manual update:', rpcErr)
             // Manual fallback: close the position and set status to liquidated
-            await supabase
+            await adminClient
               .from('margin_positions')
               .update({
                 status: 'liquidated',
-                closed_at: new Date().toISOString(),
-                close_price: currentPrice
+                closed_at: new Date().toISOString()
               })
               .eq('id', pos.id)
             
             // Refund any remaining collateral (marginBalance) if > 0
             if (marginBalance > 0) {
-              const { data: profile } = await supabase
+              const { data: profile } = await adminClient
                 .from('profiles')
                 .select('mock_balance')
                 .eq('id', user.id)
                 .single()
               if (profile) {
-                await supabase
+                await adminClient
                   .from('profiles')
-                  .update({ mock_balance: profile.mock_balance + marginBalance })
+                  .update({ mock_balance: Number(profile.mock_balance) + marginBalance })
                   .eq('id', user.id)
               }
             }
@@ -113,16 +114,16 @@ export async function GET(req: NextRequest) {
     const exposurePct = totalCollateral > 0 ? (totalExposure / totalCollateral) * 100 : 0
 
     return NextResponse.json({
-      positions: enriched.filter(p => !p.isMarginCall), // exclude just-liquidated ones
+      positions: enriched.filter(p => !p.isMarginCall),
       marginCallTriggered: marginCallPositions.length > 0,
       marginCallPositions,
       totalExposure,
       totalCollateral,
       exposurePct
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal Server Error'
     console.error('Margin positions error:', error)
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
-

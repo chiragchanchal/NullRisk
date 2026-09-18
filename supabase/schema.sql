@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT NOT NULL,
     username TEXT UNIQUE,
-    mock_balance NUMERIC DEFAULT 500000 NOT NULL,
+    mock_balance NUMERIC DEFAULT 500000 NOT NULL CHECK (mock_balance >= 0),
     initial_balance NUMERIC DEFAULT 500000 NOT NULL,
     weekly_start_balance NUMERIC DEFAULT 500000 NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -71,6 +71,15 @@ CREATE TABLE IF NOT EXISTS public.ai_analysis_cache (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+
+CREATE INDEX IF NOT EXISTS idx_holdings_user_id ON public.holdings(user_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_user_id_status ON public.transactions(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_transactions_user_id_executed_at ON public.transactions(user_id, executed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_watchlist_user_id ON public.watchlist(user_id);
+CREATE INDEX IF NOT EXISTS idx_margin_positions_user_id_status ON public.margin_positions(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_options_positions_user_id_status ON public.options_positions(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_options_positions_expiry ON public.options_positions(expiry);
+
 -- 2. Enable Row Level Security (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.holdings ENABLE ROW LEVEL SECURITY;
@@ -86,15 +95,34 @@ DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
+-- Trigger to prevent client manipulation of balance columns in public.profiles
+CREATE OR REPLACE FUNCTION public.protect_profile_financial_columns()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (NEW.mock_balance IS DISTINCT FROM OLD.mock_balance OR
+        NEW.initial_balance IS DISTINCT FROM OLD.initial_balance OR
+        NEW.weekly_start_balance IS DISTINCT FROM OLD.weekly_start_balance) THEN
+        IF current_user IN ('anon', 'authenticated') THEN
+            RAISE EXCEPTION 'Financial balances cannot be modified directly by client.';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_protect_profile_financial_columns ON public.profiles;
+CREATE TRIGGER trg_protect_profile_financial_columns
+    BEFORE UPDATE ON public.profiles
+    FOR EACH ROW EXECUTE FUNCTION public.protect_profile_financial_columns();
+
+
 -- Holdings: Users can CRUD their own holdings
 DROP POLICY IF EXISTS "Users can view own holdings" ON public.holdings;
 DROP POLICY IF EXISTS "Users can insert own holdings" ON public.holdings;
 DROP POLICY IF EXISTS "Users can update own holdings" ON public.holdings;
 DROP POLICY IF EXISTS "Users can delete own holdings" ON public.holdings;
 CREATE POLICY "Users can view own holdings" ON public.holdings FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own holdings" ON public.holdings FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own holdings" ON public.holdings FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete own holdings" ON public.holdings FOR DELETE USING (auth.uid() = user_id);
+-- Mutations on holdings must be performed via server API using service_role
 
 -- Transactions: Users can CRUD their own transactions
 DROP POLICY IF EXISTS "Users can view own transactions" ON public.transactions;
@@ -102,9 +130,7 @@ DROP POLICY IF EXISTS "Users can insert own transactions" ON public.transactions
 DROP POLICY IF EXISTS "Users can update own transactions" ON public.transactions;
 DROP POLICY IF EXISTS "Users can delete own transactions" ON public.transactions;
 CREATE POLICY "Users can view own transactions" ON public.transactions FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own transactions" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own transactions" ON public.transactions FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete own transactions" ON public.transactions FOR DELETE USING (auth.uid() = user_id);
+-- Mutations on transactions must be performed via server API using service_role
 
 -- Watchlist: Users can CRUD their own watchlist
 DROP POLICY IF EXISTS "Users can view own watchlist" ON public.watchlist;
@@ -217,7 +243,10 @@ BEGIN
 
     RETURN FALSE;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE EXECUTE ON FUNCTION public.grant_milestone_bonus(UUID, NUMERIC) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.grant_milestone_bonus(UUID, NUMERIC) TO service_role;
 
 -- 6. Enable Realtime for bonus_events (Required for frontend confetti trigger)
 -- By default, tables are not in the 'supabase_realtime' publication.
@@ -244,6 +273,9 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Schedule to run every Sunday at midnight (UTC)
+REVOKE EXECUTE ON FUNCTION public.reset_weekly_challenge() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.reset_weekly_challenge() TO service_role, postgres;
+
 SELECT cron.schedule('weekly-challenge-reset', '0 0 * * 0', 'SELECT public.reset_weekly_challenge()');
 
 -- 8. Leaderboard RPC
@@ -295,8 +327,7 @@ DROP POLICY IF EXISTS "Users can view own margin positions" ON public.margin_pos
 DROP POLICY IF EXISTS "Users can insert own margin positions" ON public.margin_positions;
 DROP POLICY IF EXISTS "Users can update own margin positions" ON public.margin_positions;
 CREATE POLICY "Users can view own margin positions" ON public.margin_positions FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own margin positions" ON public.margin_positions FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own margin positions" ON public.margin_positions FOR UPDATE USING (auth.uid() = user_id);
+-- Mutations on margin_positions must be performed via server API using service_role
 
 ALTER PUBLICATION supabase_realtime ADD TABLE public.margin_positions;
 
@@ -319,6 +350,9 @@ BEGIN
     END LOOP;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE EXECUTE ON FUNCTION public.deduct_margin_interest() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.deduct_margin_interest() TO service_role, postgres;
 
 SELECT cron.schedule('margin-interest-daily', '0 0 * * *', 'SELECT public.deduct_margin_interest()');
 
@@ -354,7 +388,10 @@ BEGIN
 
     RETURN TRUE;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE EXECUTE ON FUNCTION public.liquidate_margin_position(UUID, UUID, NUMERIC) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.liquidate_margin_position(UUID, UUID, NUMERIC) TO service_role;
 
 -- 12. Close margin position normally
 CREATE OR REPLACE FUNCTION public.close_margin_position(
@@ -390,6 +427,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+REVOKE EXECUTE ON FUNCTION public.close_margin_position(UUID, UUID, NUMERIC) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.close_margin_position(UUID, UUID, NUMERIC) TO service_role;
+
 -- ==========================================
 -- PAPER OPTIONS TRADING
 -- ==========================================
@@ -409,7 +449,7 @@ CREATE TABLE IF NOT EXISTS public.options_positions (
     spot_at_entry NUMERIC NOT NULL,
     iv_at_entry NUMERIC NOT NULL,
     -- Lifecycle
-    status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'expired', 'exercised')),
+    status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'expired', 'exercised', 'closed')),
     profit_loss NUMERIC,
     opened_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     settled_at TIMESTAMP WITH TIME ZONE
@@ -420,8 +460,7 @@ DROP POLICY IF EXISTS "Users can view own options" ON public.options_positions;
 DROP POLICY IF EXISTS "Users can insert own options" ON public.options_positions;
 DROP POLICY IF EXISTS "Users can update own options" ON public.options_positions;
 CREATE POLICY "Users can view own options" ON public.options_positions FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own options" ON public.options_positions FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own options" ON public.options_positions FOR UPDATE USING (auth.uid() = user_id);
+-- Mutations on options_positions must be performed via server API using service_role
 
 ALTER PUBLICATION supabase_realtime ADD TABLE public.options_positions;
 
@@ -468,6 +507,9 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Schedule daily at 16:00 UTC (after US market close)
+REVOKE EXECUTE ON FUNCTION public.settle_expired_options() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.settle_expired_options() TO service_role, postgres;
+
 SELECT cron.schedule('options-daily-settlement', '0 16 * * *', 'SELECT public.settle_expired_options()');
 
 -- Note: Section 15 (AI Analysis Cache Table & Policies) is defined at the top of this file to prevent duplicate schema warnings.
