@@ -196,8 +196,12 @@ BEGIN
         500000, 
         500000, 
         500000
-    );
+    )
+    ON CONFLICT (id) DO NOTHING;
     RETURN new;
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN new; -- Ensure auth user creation never aborts
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

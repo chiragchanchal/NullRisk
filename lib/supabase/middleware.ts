@@ -2,9 +2,23 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
+  // If Supabase redirected with auth code to root, login, or any other non-auth route,
+  // forward it directly to /auth/callback so the authorization code can be exchanged.
+  const code = request.nextUrl.searchParams.get('code')
+  if (code && !request.nextUrl.pathname.startsWith('/auth/')) {
+    const forwardUrl = request.nextUrl.clone()
+    forwardUrl.pathname = '/auth/callback'
+    return NextResponse.redirect(forwardUrl)
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })
+
+  // Skip session validation on auth callback/confirm routes to allow exchangeCodeForSession to run unhindered
+  if (request.nextUrl.pathname.startsWith('/auth/')) {
+    return supabaseResponse
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,29 +44,18 @@ export async function updateSession(request: NextRequest) {
   let user = null
   try {
     const { data, error } = await supabase.auth.getUser()
-    if (error) {
-      // Clear cookies on auth errors (stale tokens, deleted users, etc.) to prevent server logs spamming
-      const allCookies = request.cookies.getAll()
-      allCookies.forEach(cookie => {
-        if (cookie.name.includes('auth-token')) {
-          supabaseResponse.cookies.set(cookie.name, '', { maxAge: 0 })
-        }
-      })
-    } else {
-      user = data?.user || null
+    if (!error && data?.user) {
+      user = data.user
     }
   } catch {
-    const allCookies = request.cookies.getAll()
-    allCookies.forEach(cookie => {
-      if (cookie.name.includes('auth-token')) {
-        supabaseResponse.cookies.set(cookie.name, '', { maxAge: 0 })
-      }
-    })
+    user = null
   }
 
   // Protected routes logic
   // If no user and not on auth/login or auth/confirm, redirect to login
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/auth')
+  const isAuthRoute =
+    request.nextUrl.pathname.startsWith('/login') ||
+    request.nextUrl.pathname.startsWith('/auth')
   const isApiRoute = request.nextUrl.pathname.startsWith('/api')
 
   if (!user && !isAuthRoute && !isApiRoute) {
