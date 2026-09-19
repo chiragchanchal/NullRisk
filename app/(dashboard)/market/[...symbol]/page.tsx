@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState, useEffect, useRef } from 'react'
+import { use, useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import { createChart, ColorType, CandlestickSeries, UTCTimestamp } from 'lightweight-charts'
@@ -8,6 +8,7 @@ import { ArrowLeft, Clock, AlertTriangle, Zap, RefreshCw, Radio } from 'lucide-r
 import { motion, AnimatePresence } from 'framer-motion'
 import { AIAnalystCard } from '@/components/ui/ai-analyst-card'
 import { AssetLogo } from '@/components/ui/asset-logo'
+import { useLiveMarketStream } from '@/lib/hooks/useLiveMarketStream'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
@@ -51,12 +52,16 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
 
   const chartContainerRef = useRef<HTMLDivElement>(null)
 
+  const symbolList = useMemo(() => [symbol], [symbol])
+  const { prices: streamPrices, tickDirections, isStreaming } = useLiveMarketStream(symbolList)
+
   const { data: quote } = useSWR(
     `/api/market/quote?symbol=${encodeURIComponent(symbol)}&assetType=${assetType}`,
     fetcher,
     { refreshInterval: 15000 }
   )
-  const currentPrice = quote?.price || 0
+  const currentPrice = streamPrices[symbol] ?? quote?.price ?? 0
+  const tickDir = tickDirections[symbol]
 
   const { data: ohlc } = useSWR(`/api/market/ohlc?symbol=${encodeURIComponent(symbol)}`, fetcher)
   const { data: news } = useSWR(`/api/market/news?symbol=${encodeURIComponent(symbol)}`, fetcher)
@@ -196,12 +201,23 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
             </div>
 
             <div className="text-left sm:text-right">
-              <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Live Quote</div>
-              <div className="text-2xl sm:text-3xl font-bold font-mono text-zinc-100 tabular-nums">
+              <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 flex items-center gap-1.5 sm:justify-end">
+                {isStreaming && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />}
+                <span>Live Quote {isStreaming ? '(Streaming)' : ''}</span>
+              </div>
+              <div
+                className={`text-2xl sm:text-3xl font-bold font-mono tabular-nums transition-colors duration-300 ${
+                  tickDir === 'up'
+                    ? 'text-emerald-400'
+                    : tickDir === 'down'
+                    ? 'text-rose-400'
+                    : 'text-zinc-100'
+                }`}
+              >
                 {currentPrice
                   ? `₹${currentPrice.toLocaleString('en-IN', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
+                      minimumFractionDigits: assetType === 'forex' ? 4 : 2,
+                      maximumFractionDigits: assetType === 'forex' ? 4 : 2,
                     })}`
                   : 'Syncing...'}
               </div>

@@ -266,6 +266,54 @@ GET /api/options/price?symbol={symbol}&strike={strike}&expiryDays={days}&type={c
 }
 ```
 
+### Real-Time Market Tick Stream (Server-Sent Events)
+
+```http
+GET /api/market/stream
+Accept: text/event-stream
+```
+**Stream Events:**
+```text
+event: snapshot
+data: [{"symbol":"BTC","price":7241250.00,"change":3.82,"direction":"up"},...]
+
+event: tick
+data: {"symbol":"AAPL","price":228.45,"change":1.24,"direction":"up","timestamp":1774000000000}
+```
+
+### Algorithmic Webhook Order Routing
+
+```http
+POST /api/trade/webhook
+Content-Type: application/json
+x-webhook-secret: {WEBHOOK_SECRET}
+```
+**Request Body:**
+```json
+{
+  "action": "BUY",
+  "symbol": "BTC",
+  "asset_type": "crypto",
+  "quantity": 0.25,
+  "strategy": "Dual EMA Dynamic Trend Follower"
+}
+```
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "status": "executed",
+  "order": {
+    "id": "tx_...",
+    "action": "BUY",
+    "symbol": "BTC",
+    "quantity": 0.25,
+    "fill_price": 7241250.00,
+    "strategy": "Dual EMA Dynamic Trend Follower"
+  }
+}
+```
+
 ---
 
 ## ⚡ Quickstart & Installation
@@ -339,8 +387,8 @@ npm run start   # Run production server
 - [x] **Phase 2**: High-density 21st.dev terminal redesign, dual-axis performance risk gauge, and BSM Options Greeks matrix.
 - [x] **Phase 3**: Genjutsu motion design integration, spring layout tabs (`layoutId`), and tactile feedback micro-interactions.
 - [x] **Phase 4**: Interactive topbar telemetry (NSE/NASDAQ pulse modal, notification center) and Three.js 3D Risk Hologram (`3dviz-pro-max`).
-- [ ] **Phase 5**: Real-time WebSockets integration for sub-second tick streaming.
-- [ ] **Phase 6**: Algorithmic webhook order routing and backtesting playground.
+- [x] **Phase 5**: Real-time WebSockets / SSE integration for sub-second tick streaming (`/api/market/stream`).
+- [x] **Phase 6**: Algorithmic webhook order routing API (`/api/trade/webhook`) and Quantitative Backtesting Playground (`/backtest`).
 
 ---
 

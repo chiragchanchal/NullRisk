@@ -14,6 +14,7 @@ import {
   BarChart2,
   Shield,
   Radio,
+  FlaskConical,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -24,6 +25,7 @@ const navItems = [
   { name: 'Options', href: '/options', icon: BarChart2, shortcut: '⌘4' },
   { name: 'Leaderboard', href: '/leaderboard', icon: Trophy, shortcut: '⌘5' },
   { name: 'Watchlist', href: '/watchlist', icon: Star, shortcut: '⌘6' },
+  { name: 'Backtest Lab', href: '/backtest', icon: FlaskConical, shortcut: '⌘7' },
 ]
 
 export function Sidebar() {

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Search, Star, TrendingUp, TrendingDown, ArrowRight, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { AssetLogo } from '@/components/ui/asset-logo'
+import { useLiveMarketStream } from '@/lib/hooks/useLiveMarketStream'
 
 // Comprehensive 150 assets list (50 Stocks, 50 Cryptocurrencies, 50 Forex pairs)
 const POPULAR_ASSETS = [
@@ -238,6 +239,9 @@ export default function MarketExplorer() {
     return filteredAssets.slice(startIdx, startIdx + pageSize)
   }, [filteredAssets, startIdx, pageSize])
 
+  const visibleSymbols = useMemo(() => visibleAssets.map((a) => a.symbol), [visibleAssets])
+  const { prices: streamPrices, tickDirections, isStreaming } = useLiveMarketStream(visibleSymbols)
+
   useEffect(() => {
     if (visibleAssets.length === 0) return
 
@@ -305,6 +309,12 @@ export default function MarketExplorer() {
             <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800 text-zinc-400 border border-white/[0.06]">
               150 ASSETS
             </span>
+            {isStreaming && (
+              <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono text-emerald-400 font-semibold">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                <span>LIVE TICK STREAM</span>
+              </span>
+            )}
           </div>
           <p className="text-xs text-zinc-400 mt-1 font-mono">
             Global stocks, high-liquidity crypto tokens, and major currency pairs
@@ -388,7 +398,8 @@ export default function MarketExplorer() {
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
               {visibleAssets.map((asset) => {
-                const price = prices[asset.symbol]
+                const price = streamPrices[asset.symbol] ?? prices[asset.symbol]
+                const tickDir = tickDirections[asset.symbol]
                 const mockChange = getStableMockChange(asset.symbol)
                 const isPositive = mockChange >= 0
                 const isWatched = watchlist.includes(asset.symbol)
@@ -420,13 +431,25 @@ export default function MarketExplorer() {
                       </span>
                     </td>
 
-                    <td className="py-3.5 px-4 text-right font-mono font-bold text-sm text-zinc-100 tabular-nums">
-                      {price
-                        ? `₹${price.toLocaleString('en-IN', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}`
-                        : <span className="text-zinc-600 font-normal">Syncing...</span>}
+                    <td className="py-3.5 px-4 text-right font-mono font-bold text-sm tabular-nums">
+                      {price ? (
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded transition-all duration-300 ${
+                            tickDir === 'up'
+                              ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40'
+                              : tickDir === 'down'
+                              ? 'bg-rose-500/20 text-rose-400 ring-1 ring-rose-500/40'
+                              : 'text-zinc-100'
+                          }`}
+                        >
+                          ₹{price.toLocaleString('en-IN', {
+                            minimumFractionDigits: asset.type === 'forex' ? 4 : 2,
+                            maximumFractionDigits: asset.type === 'forex' ? 4 : 2,
+                          })}
+                        </span>
+                      ) : (
+                        <span className="text-zinc-600 font-normal">Syncing...</span>
+                      )}
                     </td>
 
                     <td className="py-3.5 px-4 text-right">
