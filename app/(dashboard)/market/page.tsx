@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Star, TrendingUp, TrendingDown, ArrowRight, X } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { AssetLogo } from '@/components/ui/asset-logo'
 
 // Comprehensive 150 assets list (50 Stocks, 50 Cryptocurrencies, 50 Forex pairs)
@@ -265,8 +266,37 @@ export default function MarketExplorer() {
 
   const tabs: Array<'all' | 'stock' | 'crypto' | 'forex'> = ['all', 'stock', 'crypto', 'forex']
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05,
+        delayChildren: 0.04,
+      },
+    },
+  }
+
+  const rowVariants = {
+    hidden: { opacity: 0, y: 6 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: 'spring' as const,
+        stiffness: 400,
+        damping: 28,
+      },
+    },
+  }
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6 max-w-7xl mx-auto"
+    >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/[0.06]">
         <div>
@@ -291,13 +321,22 @@ export default function MarketExplorer() {
                 setActiveTab(tab)
                 setCurrentPage(1)
               }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-semibold capitalize transition-all ${
+              className={`relative px-3.5 py-1.5 rounded-lg text-xs font-mono font-semibold capitalize transition-colors cursor-pointer ${
                 activeTab === tab
-                  ? 'bg-zinc-800 text-zinc-100 shadow-sm'
+                  ? 'text-zinc-100'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              {tab === 'all' ? 'All Classes' : tab}
+              {activeTab === tab && (
+                <motion.div
+                  layoutId="marketActiveTab"
+                  className="absolute inset-0 rounded-lg bg-zinc-800 border border-white/[0.08] shadow-sm z-0"
+                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                />
+              )}
+              <span className="relative z-10">
+                {tab === 'all' ? 'All Classes' : tab}
+              </span>
             </button>
           ))}
         </div>
@@ -355,9 +394,10 @@ export default function MarketExplorer() {
                 const isWatched = watchlist.includes(asset.symbol)
 
                 return (
-                  <tr
+                  <motion.tr
                     key={asset.symbol}
-                    className="hover:bg-zinc-900/40 transition-colors group cursor-pointer"
+                    variants={rowVariants}
+                    className="hover:bg-zinc-900/50 transition-colors group cursor-pointer"
                     onClick={() => router.push(`/market/${asset.symbol}?type=${asset.type}`)}
                   >
                     <td className="py-3.5 px-5">
@@ -410,9 +450,12 @@ export default function MarketExplorer() {
                         toggleWatchlist(asset.symbol, asset.type)
                       }}
                     >
-                      <button
+                      <motion.button
                         type="button"
-                        className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-amber-400 transition-colors"
+                        whileHover={{ scale: 1.15 }}
+                        whileTap={{ scale: 0.85, rotate: -15 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                        className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-amber-400 transition-colors cursor-pointer"
                         title={isWatched ? 'Remove from Watchlist' : 'Add to Watchlist'}
                       >
                         <Star
@@ -420,23 +463,26 @@ export default function MarketExplorer() {
                             isWatched ? 'fill-amber-400 text-amber-400 scale-110' : 'hover:scale-110'
                           }`}
                         />
-                      </button>
+                      </motion.button>
                     </td>
 
                     <td className="py-3.5 px-5 text-right">
-                      <button
+                      <motion.button
                         type="button"
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ type: 'spring', stiffness: 450, damping: 22 }}
                         onClick={(e) => {
                           e.stopPropagation()
                           router.push(`/market/${asset.symbol}?type=${asset.type}`)
                         }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-emerald-500 hover:text-zinc-950 text-zinc-300 border border-white/[0.08] hover:border-emerald-400 text-xs font-mono font-bold transition-all shadow-sm group-hover:border-zinc-700"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-emerald-500 hover:text-zinc-950 text-zinc-300 border border-white/[0.08] hover:border-emerald-400 text-xs font-mono font-bold transition-all shadow-sm group-hover:border-zinc-700 cursor-pointer"
                       >
                         <span>Trade</span>
                         <ArrowRight className="h-3 w-3" />
-                      </button>
+                      </motion.button>
                     </td>
-                  </tr>
+                  </motion.tr>
                 )
               })}
 
@@ -463,14 +509,16 @@ export default function MarketExplorer() {
             </p>
 
             <div className="flex items-center gap-1">
-              <button
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-2.5 py-1 text-xs font-mono rounded-lg border border-white/[0.06] bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+                className="px-2.5 py-1 text-xs font-mono rounded-lg border border-white/[0.06] bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 disabled:opacity-40 transition-colors cursor-pointer"
               >
                 Prev
-              </button>
+              </motion.button>
 
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 let pageNum = currentPage
@@ -484,33 +532,38 @@ export default function MarketExplorer() {
                 if (pageNum <= 0 || pageNum > totalPages) return null
 
                 return (
-                  <button
+                  <motion.button
                     key={pageNum}
                     type="button"
+                    whileHover={{ scale: 1.08 }}
+                    whileTap={{ scale: 0.92 }}
+                    transition={{ type: 'spring', stiffness: 450, damping: 20 }}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`h-7 w-7 text-xs font-mono font-bold rounded-lg transition-all ${
+                    className={`h-7 w-7 text-xs font-mono font-bold rounded-lg transition-all cursor-pointer ${
                       currentPage === pageNum
                         ? 'bg-emerald-500 text-zinc-950 shadow-md'
                         : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 border border-white/[0.06]'
                     }`}
                   >
                     {pageNum}
-                  </button>
+                  </motion.button>
                 )
               })}
 
-              <button
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="px-2.5 py-1 text-xs font-mono rounded-lg border border-white/[0.06] bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 disabled:opacity-40 transition-colors"
+                className="px-2.5 py-1 text-xs font-mono rounded-lg border border-white/[0.06] bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 disabled:opacity-40 transition-colors cursor-pointer"
               >
                 Next
-              </button>
+              </motion.button>
             </div>
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }

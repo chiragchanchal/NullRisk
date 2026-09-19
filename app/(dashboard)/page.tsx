@@ -26,6 +26,30 @@ const QUICK_ASSETS = [
   { symbol: 'USDINR', name: 'USD / INR', type: 'forex', price: '₹83.45', change: '+0.05%' },
 ]
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.07,
+      delayChildren: 0.05,
+    },
+  },
+}
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: 'spring' as const,
+      stiffness: 360,
+      damping: 26,
+    },
+  },
+}
+
 export default function DashboardPage() {
   // Poll every 15 seconds
   const { data: summary, error, isLoading, isValidating } = useSWR('/api/portfolio/summary', fetcher, {
@@ -71,7 +95,12 @@ export default function DashboardPage() {
   const pctToMilestone = Math.max(0, (milestoneTarget || 10) - totalPnLPct)
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6 max-w-7xl mx-auto"
+    >
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/[0.06]">
         <div>
@@ -93,27 +122,43 @@ export default function DashboardPage() {
 
         {/* Action Shortcuts */}
         <div className="flex items-center gap-2">
-          <Link
-            href="/market"
-            className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-white/[0.08] text-xs font-mono font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 25 }}
           >
-            <span>Explore Markets</span>
-            <ArrowRight className="h-3.5 w-3.5 text-zinc-400" />
-          </Link>
-          <Link
-            href="/options"
-            className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all"
+            <Link
+              href="/market"
+              className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-white/[0.08] text-xs font-mono font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+            >
+              <span>Explore Markets</span>
+              <ArrowRight className="h-3.5 w-3.5 text-zinc-400" />
+            </Link>
+          </motion.div>
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 25 }}
           >
-            <Zap className="h-3.5 w-3.5" />
-            <span>Options Chain</span>
-          </Link>
+            <Link
+              href="/options"
+              className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 text-xs font-mono font-semibold flex items-center gap-1.5 transition-colors"
+            >
+              <Zap className="h-3.5 w-3.5" />
+              <span>Options Chain</span>
+            </Link>
+          </motion.div>
         </div>
       </div>
 
       {/* 4-Card Bento Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Portfolio Value */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-900/70 to-zinc-950/90 border border-white/[0.08] p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)] group hover:border-zinc-700/80 transition-all">
+        <motion.div
+          variants={cardVariants}
+          whileHover={{ y: -3, transition: { type: 'spring', stiffness: 450, damping: 25 } }}
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-900/70 to-zinc-950/90 border border-white/[0.08] p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)] group hover:border-zinc-700/80 transition-colors"
+        >
           <div className="flex items-center justify-between pb-3">
             <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 font-semibold">
               Total Net Worth
@@ -143,10 +188,14 @@ export default function DashboardPage() {
               isPositive ? 'bg-emerald-500' : 'bg-rose-500'
             }`}
           />
-        </div>
+        </motion.div>
 
         {/* Card 2: Available Cash */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-900/70 to-zinc-950/90 border border-white/[0.08] p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)] group hover:border-zinc-700/80 transition-all">
+        <motion.div
+          variants={cardVariants}
+          whileHover={{ y: -3, transition: { type: 'spring', stiffness: 450, damping: 25 } }}
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-900/70 to-zinc-950/90 border border-white/[0.08] p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)] group hover:border-zinc-700/80 transition-colors"
+        >
           <div className="flex items-center justify-between pb-3">
             <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 font-semibold">
               Deployable Cash
@@ -162,10 +211,14 @@ export default function DashboardPage() {
             <span>Collateral Status</span>
             <span className="text-emerald-400 font-medium">Unencumbered</span>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 3: Unrealised P&L */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-900/70 to-zinc-950/90 border border-white/[0.08] p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)] group hover:border-zinc-700/80 transition-all">
+        <motion.div
+          variants={cardVariants}
+          whileHover={{ y: -3, transition: { type: 'spring', stiffness: 450, damping: 25 } }}
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-900/70 to-zinc-950/90 border border-white/[0.08] p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)] group hover:border-zinc-700/80 transition-colors"
+        >
           <div className="flex items-center justify-between pb-3">
             <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 font-semibold">
               Floating P&L
@@ -184,10 +237,14 @@ export default function DashboardPage() {
             <span>Active Holdings</span>
             <span className="text-zinc-300 tabular-nums">{summary?.holdings?.length || 0} Assets</span>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 4: Realised P&L */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-900/70 to-zinc-950/90 border border-white/[0.08] p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)] group hover:border-zinc-700/80 transition-all">
+        <motion.div
+          variants={cardVariants}
+          whileHover={{ y: -3, transition: { type: 'spring', stiffness: 450, damping: 25 } }}
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-900/70 to-zinc-950/90 border border-white/[0.08] p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)] group hover:border-zinc-700/80 transition-colors"
+        >
           <div className="flex items-center justify-between pb-3">
             <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 font-semibold">
               Realised Gain/Loss
@@ -206,15 +263,18 @@ export default function DashboardPage() {
             <span>Settled Ledger</span>
             <span className="text-zinc-300 font-medium">Secured</span>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Terminal Calibrated Performance Meter (21st.dev Style) */}
-      <div className="rounded-2xl bg-gradient-to-b from-zinc-900/80 to-zinc-950 border border-white/[0.08] p-6 shadow-[0_4px_30px_-6px_rgba(0,0,0,0.7)] relative overflow-hidden">
+      <motion.div
+        variants={cardVariants}
+        className="rounded-2xl bg-gradient-to-b from-zinc-900/80 to-zinc-950 border border-white/[0.08] p-6 shadow-[0_4px_30px_-6px_rgba(0,0,0,0.7)] relative overflow-hidden"
+      >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6">
           <div>
             <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <h2 className="text-base font-bold text-zinc-100 tracking-tight font-sans">
                 Performance Calibration & Risk Gauge
               </h2>
@@ -269,7 +329,7 @@ export default function DashboardPage() {
                 className="absolute right-1/2 top-0 h-full bg-gradient-to-l from-rose-500 to-rose-600/40 rounded-l-full"
                 initial={{ width: 0 }}
                 animate={{ width: `${(Math.abs(displayPct) / 20) * 100}%` }}
-                transition={{ duration: 0.8, ease: 'easeOut' }}
+                transition={{ type: 'spring', stiffness: 180, damping: 24 }}
               />
             )}
 
@@ -279,7 +339,7 @@ export default function DashboardPage() {
                 className="absolute left-1/2 top-0 h-full bg-gradient-to-r from-emerald-500 to-emerald-400/80 rounded-r-full shadow-[0_0_12px_rgba(16,185,129,0.5)]"
                 initial={{ width: 0 }}
                 animate={{ width: `${(displayPct / 20) * 100}%` }}
-                transition={{ duration: 0.8, ease: 'easeOut' }}
+                transition={{ type: 'spring', stiffness: 180, damping: 24 }}
               />
             )}
           </div>
@@ -289,7 +349,7 @@ export default function DashboardPage() {
             className="absolute top-[32px] -translate-x-1/2 flex flex-col items-center z-20 pointer-events-none"
             initial={{ left: '50%' }}
             animate={{ left: `${percentagePosition}%` }}
-            transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+            transition={{ type: 'spring', stiffness: 180, damping: 20, mass: 0.8 }}
           >
             <div
               className={`h-5 w-5 rounded-full border-2 bg-zinc-950 flex items-center justify-center shadow-lg ${
@@ -343,10 +403,13 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Quick Trade Strip (Top Assets) */}
-      <div className="rounded-2xl bg-zinc-950/70 border border-white/[0.08] p-5">
+      <motion.div
+        variants={cardVariants}
+        className="rounded-2xl bg-zinc-950/70 border border-white/[0.08] p-5"
+      >
         <div className="flex items-center justify-between pb-3">
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-zinc-400" />
@@ -365,27 +428,33 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {QUICK_ASSETS.map((asset) => (
-            <Link
+            <motion.div
               key={asset.symbol}
-              href={`/market/${asset.type}/${asset.symbol}`}
-              className="p-3 rounded-xl bg-zinc-900/60 hover:bg-zinc-900 border border-white/[0.06] hover:border-zinc-700 transition-all flex flex-col justify-between group"
+              whileHover={{ y: -2, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 450, damping: 25 }}
             >
-              <div className="flex items-center justify-between pb-2">
-                <span className="text-xs font-mono font-bold text-zinc-200 group-hover:text-emerald-400 transition-colors">
-                  {asset.symbol}
-                </span>
-                <span className="text-[10px] font-mono text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                  {asset.change}
-                </span>
-              </div>
-              <div>
-                <span className="text-[11px] font-mono text-zinc-400 tabular-nums">{asset.price}</span>
-                <span className="block text-[9px] font-mono text-zinc-600 truncate">{asset.name}</span>
-              </div>
-            </Link>
+              <Link
+                href={`/market/${asset.type}/${asset.symbol}`}
+                className="p-3 rounded-xl bg-zinc-900/60 hover:bg-zinc-900 border border-white/[0.06] hover:border-zinc-700 transition-colors flex flex-col justify-between group h-full"
+              >
+                <div className="flex items-center justify-between pb-2">
+                  <span className="text-xs font-mono font-bold text-zinc-200 group-hover:text-emerald-400 transition-colors">
+                    {asset.symbol}
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                    {asset.change}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-mono text-zinc-400 tabular-nums">{asset.price}</span>
+                  <span className="block text-[9px] font-mono text-zinc-600 truncate">{asset.name}</span>
+                </div>
+              </Link>
+            </motion.div>
           ))}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

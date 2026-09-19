@@ -143,14 +143,17 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Navigation Breadcrumb */}
-      <button
+      <motion.button
         type="button"
+        whileHover={{ x: -2 }}
+        whileTap={{ scale: 0.98 }}
+        transition={{ type: 'spring', stiffness: 450, damping: 25 }}
         onClick={() => router.back()}
-        className="inline-flex items-center text-xs font-mono text-zinc-400 hover:text-zinc-100 transition-colors group"
+        className="inline-flex items-center text-xs font-mono text-zinc-400 hover:text-zinc-100 transition-colors group cursor-pointer"
       >
         <ArrowLeft className="mr-2 h-3.5 w-3.5 group-hover:-translate-x-1 transition-transform" />
         <span>Return to Market Explorer</span>
-      </button>
+      </motion.button>
 
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left Column: Chart, AI Analysis, News */}
@@ -255,28 +258,42 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
             </div>
 
             {/* Buy / Sell Toggle */}
-            <div className="grid grid-cols-2 p-1 bg-zinc-900 rounded-xl border border-white/[0.06]">
+            <div className="grid grid-cols-2 p-1 bg-zinc-900 rounded-xl border border-white/[0.06] relative">
               <button
                 type="button"
                 onClick={() => setOrderType('buy')}
-                className={`py-2 text-xs font-mono font-bold rounded-lg transition-all ${
+                className={`relative py-2 text-xs font-mono font-bold rounded-lg transition-colors cursor-pointer ${
                   orderType === 'buy'
-                    ? 'bg-emerald-500 text-zinc-950 shadow-md'
+                    ? 'text-zinc-950'
                     : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
-                BUY / LONG
+                {orderType === 'buy' && (
+                  <motion.div
+                    layoutId="orderTypeIndicator"
+                    className="absolute inset-0 rounded-lg bg-emerald-500 shadow-md z-0"
+                    transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">BUY / LONG</span>
               </button>
               <button
                 type="button"
                 onClick={() => setOrderType('sell')}
-                className={`py-2 text-xs font-mono font-bold rounded-lg transition-all ${
+                className={`relative py-2 text-xs font-mono font-bold rounded-lg transition-colors cursor-pointer ${
                   orderType === 'sell'
-                    ? 'bg-rose-500 text-white shadow-md'
+                    ? 'text-white'
                     : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
-                SELL / SHORT
+                {orderType === 'sell' && (
+                  <motion.div
+                    layoutId="orderTypeIndicator"
+                    className="absolute inset-0 rounded-lg bg-rose-500 shadow-md z-0"
+                    transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">SELL / SHORT</span>
               </button>
             </div>
 
@@ -325,18 +342,21 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
                         </label>
                         <div className="grid grid-cols-5 gap-1 bg-zinc-950 p-1 rounded-lg border border-white/[0.06]">
                           {[2, 5, 10, 25, 50].map((lvl) => (
-                            <button
+                            <motion.button
                               key={lvl}
                               type="button"
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.94 }}
+                              transition={{ type: 'spring', stiffness: 450, damping: 20 }}
                               onClick={() => setLeverage(lvl)}
-                              className={`py-1 text-xs font-mono font-bold rounded transition-all ${
+                              className={`py-1 text-xs font-mono font-bold rounded transition-colors cursor-pointer ${
                                 leverage === lvl
                                   ? 'bg-amber-400 text-zinc-950 shadow-sm'
                                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                               }`}
                             >
                               {lvl}x
-                            </button>
+                            </motion.button>
                           ))}
                         </div>
                       </div>
@@ -435,10 +455,13 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
               </div>
 
               {/* Submit Button */}
-              <button
+              <motion.button
                 type="submit"
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 450, damping: 20 }}
                 disabled={isSubmitting || !quantity || (!isMarginMode && orderClass === 'limit' && !limitPrice)}
-                className={`w-full h-11 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all disabled:opacity-40 shadow-lg flex items-center justify-center gap-2 ${
+                className={`w-full h-11 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-colors disabled:opacity-40 shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
                   isMarginMode
                     ? 'bg-amber-400 hover:bg-amber-300 text-zinc-950 shadow-amber-500/10'
                     : orderType === 'buy'
@@ -456,7 +479,7 @@ export default function AssetDetail({ params }: { params: Promise<{ symbol: stri
                 ) : (
                   `${orderType === 'buy' ? 'Execute Buy' : 'Execute Sell'} ${symbol}`
                 )}
-              </button>
+              </motion.button>
 
               <AnimatePresence>
                 {tradeMessage && (

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { Bell, Search, Settings, Wallet, Activity } from 'lucide-react'
 
@@ -65,7 +66,11 @@ export function Topbar() {
       {/* Balance & Actions */}
       <div className="flex items-center gap-2 sm:gap-4 ml-2">
         {/* Balance Card Chip */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900/80 border border-white/[0.08] shadow-[0_2px_10px_-2px_rgba(0,0,0,0.5)]">
+        <motion.div
+          whileHover={{ y: -1, scale: 1.01 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900/80 border border-white/[0.08] shadow-[0_2px_10px_-2px_rgba(0,0,0,0.5)] cursor-default"
+        >
           <div className="h-7 w-7 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
             <Wallet className="h-3.5 w-3.5" />
           </div>
@@ -77,27 +82,33 @@ export function Topbar() {
               {balance !== null ? formatCurrency(balance) : '₹---'}
             </span>
           </div>
-        </div>
+        </motion.div>
 
         {/* Mobile Settings Button */}
-        <button
+        <motion.button
           type="button"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ type: 'spring', stiffness: 450, damping: 20 }}
           onClick={() => window.dispatchEvent(new Event('open-settings'))}
-          className="md:hidden p-2 rounded-lg bg-zinc-900/60 border border-white/[0.06] text-zinc-400 hover:text-zinc-100 transition-colors shrink-0"
+          className="md:hidden p-2 rounded-lg bg-zinc-900/60 border border-white/[0.06] text-zinc-400 hover:text-zinc-100 transition-colors shrink-0 cursor-pointer"
           title="Settings"
         >
           <Settings className="h-4 w-4" />
-        </button>
+        </motion.button>
 
         {/* Notification Bell */}
-        <button
+        <motion.button
           type="button"
-          className="relative p-2 rounded-lg bg-zinc-900/60 border border-white/[0.06] text-zinc-400 hover:text-zinc-100 transition-colors shrink-0 group"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ type: 'spring', stiffness: 450, damping: 20 }}
+          className="relative p-2 rounded-lg bg-zinc-900/60 border border-white/[0.06] text-zinc-400 hover:text-zinc-100 transition-colors shrink-0 group cursor-pointer"
           title="Notifications"
         >
           <Bell className="h-4 w-4 group-hover:text-zinc-200 transition-colors" />
           <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400 ring-2 ring-zinc-950" />
-        </button>
+        </motion.button>
       </div>
     </header>
   )

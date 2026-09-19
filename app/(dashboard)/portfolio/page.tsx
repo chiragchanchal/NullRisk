@@ -56,6 +56,30 @@ interface PortfolioHolding {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.06,
+      delayChildren: 0.05,
+    },
+  },
+}
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: 'spring' as const,
+      stiffness: 360,
+      damping: 26,
+    },
+  },
+}
+
 export default function PortfolioPage() {
   const router = useRouter()
   const [closingPositionId, setClosingPositionId] = useState<string | null>(null)
@@ -144,7 +168,12 @@ export default function PortfolioPage() {
   const exposureColor = exposurePct > 150 ? '#f43f5e' : exposurePct > 80 ? '#eab308' : '#10b981'
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6 max-w-7xl mx-auto"
+    >
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/[0.06]">
         <div>
@@ -164,26 +193,44 @@ export default function PortfolioPage() {
           <button
             type="button"
             onClick={() => setActiveTab('holdings')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all flex items-center gap-1.5 ${
+            className={`relative px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'holdings'
-                ? 'bg-zinc-800 text-zinc-100 shadow-sm'
+                ? 'text-zinc-100'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            <Briefcase className="h-3.5 w-3.5" />
-            <span>Spot Holdings ({summary.holdings?.length || 0})</span>
+            {activeTab === 'holdings' && (
+              <motion.div
+                layoutId="portfolioActiveTab"
+                className="absolute inset-0 rounded-lg bg-zinc-800 border border-white/[0.08] shadow-sm z-0"
+                transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-1.5">
+              <Briefcase className="h-3.5 w-3.5" />
+              <span>Spot Holdings ({summary.holdings?.length || 0})</span>
+            </span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('margin')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all flex items-center gap-1.5 ${
+            className={`relative px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'margin'
-                ? 'bg-zinc-800 text-zinc-100 shadow-sm'
+                ? 'text-zinc-100'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            <Zap className="h-3.5 w-3.5 text-amber-400" />
-            <span>Margin Positions ({openPositions.length})</span>
+            {activeTab === 'margin' && (
+              <motion.div
+                layoutId="portfolioActiveTab"
+                className="absolute inset-0 rounded-lg bg-zinc-800 border border-white/[0.08] shadow-sm z-0"
+                transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-1.5">
+              <Zap className="h-3.5 w-3.5 text-amber-400" />
+              <span>Margin Positions ({openPositions.length})</span>
+            </span>
           </button>
         </div>
       </div>
@@ -391,10 +438,13 @@ export default function PortfolioPage() {
               {summary.holdings.map((holding: PortfolioHolding) => {
                 const isPositive = holding.unrealisedPnLPct >= 0
                 return (
-                  <div
+                  <motion.div
                     key={holding.id}
+                    variants={cardVariants}
+                    whileHover={{ y: -3, transition: { type: 'spring', stiffness: 450, damping: 25 } }}
+                    whileTap={{ scale: 0.99 }}
                     onClick={() => router.push(`/market/${holding.asset_type}/${holding.symbol}`)}
-                    className="p-5 rounded-2xl bg-zinc-950/80 hover:bg-zinc-900/90 border border-white/[0.08] hover:border-zinc-700 transition-all cursor-pointer group shadow-[0_2px_12px_-2px_rgba(0,0,0,0.5)] flex flex-col justify-between"
+                    className="p-5 rounded-2xl bg-zinc-950/80 hover:bg-zinc-900/90 border border-white/[0.08] hover:border-zinc-700 transition-colors cursor-pointer group shadow-[0_2px_12px_-2px_rgba(0,0,0,0.5)] flex flex-col justify-between"
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
@@ -439,7 +489,7 @@ export default function PortfolioPage() {
                         </span>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 )
               })}
             </div>
@@ -485,16 +535,21 @@ export default function PortfolioPage() {
                   <motion.div
                     key={pos.id}
                     layout
+                    variants={cardVariants}
+                    whileHover={{ y: -2, transition: { type: 'spring', stiffness: 450, damping: 25 } }}
                     className={`rounded-2xl p-5 relative border bg-zinc-950/80 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.5)] transition-all ${
                       marginRatio >= 70 ? 'border-rose-500/40' : 'border-white/[0.08]'
                     }`}
                   >
                     {/* Close Position Button */}
-                    <button
+                    <motion.button
                       type="button"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.92 }}
+                      transition={{ type: 'spring', stiffness: 450, damping: 20 }}
                       onClick={() => handleCloseMarginPosition(pos.id)}
                       disabled={closingPositionId === pos.id}
-                      className="absolute top-4 right-4 p-1.5 rounded-lg bg-zinc-900/80 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-400 border border-white/[0.06] transition-all disabled:opacity-50"
+                      className="absolute top-4 right-4 p-1.5 rounded-lg bg-zinc-900/80 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-400 border border-white/[0.06] transition-colors disabled:opacity-50 cursor-pointer"
                       title="Liquidate / Close Position"
                     >
                       {closingPositionId === pos.id ? (
@@ -502,7 +557,7 @@ export default function PortfolioPage() {
                       ) : (
                         <X className="h-3.5 w-3.5" />
                       )}
-                    </button>
+                    </motion.button>
 
                     <div className="flex items-start justify-between mb-4 pr-8">
                       <div className="flex items-center gap-3">
@@ -604,6 +659,6 @@ export default function PortfolioPage() {
           )}
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }

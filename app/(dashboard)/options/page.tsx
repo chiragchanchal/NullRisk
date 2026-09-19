@@ -175,7 +175,9 @@ function PositionCard({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl bg-zinc-950/80 border border-white/[0.08] p-5 shadow-sm space-y-3 font-mono"
+      whileHover={{ y: -2, transition: { type: 'spring', stiffness: 450, damping: 25 } }}
+      transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+      className="rounded-2xl bg-zinc-950/80 hover:border-zinc-700/80 border border-white/[0.08] p-5 shadow-sm space-y-3 font-mono transition-colors"
     >
       <div className="flex items-start justify-between">
         <div>
@@ -228,11 +230,14 @@ function PositionCard({
             <div>Θ {(pos.theta || 0).toFixed(4)}</div>
             <div>ν {(pos.vega || 0).toFixed(4)}</div>
           </div>
-          <button
+          <motion.button
             type="button"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 20 }}
             onClick={handleClose}
             disabled={isClosing}
-            className="w-full mt-2 h-8 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-40"
+            className="w-full mt-2 h-8 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-40 cursor-pointer"
           >
             {isClosing ? (
               <>
@@ -240,9 +245,9 @@ function PositionCard({
                 Closing Contract...
               </>
             ) : (
-              '⚡ Settle Position'
+              'Close / Exercise Position'
             )}
-          </button>
+          </motion.button>
         </>
       )}
     </motion.div>
@@ -427,30 +432,48 @@ export default function OptionsPage() {
           </div>
 
           {/* Option Type Switcher */}
-          <div className="grid grid-cols-2 p-1 bg-zinc-900 rounded-xl border border-white/[0.08]">
+          <div className="grid grid-cols-2 p-1 bg-zinc-900 rounded-xl border border-white/[0.08] relative">
             <button
               type="button"
               onClick={() => setOptionType('call')}
-              className={`py-2 text-xs font-mono font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              className={`relative py-2 text-xs font-mono font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
                 optionType === 'call'
-                  ? 'bg-emerald-500 text-zinc-950 shadow-md'
+                  ? 'text-zinc-950'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <TrendingUp className="h-3.5 w-3.5" />
-              <span>CALL (BULLISH)</span>
+              {optionType === 'call' && (
+                <motion.div
+                  layoutId="optionTypeIndicator"
+                  className="absolute inset-0 rounded-lg bg-emerald-500 shadow-md z-0"
+                  transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                <TrendingUp className="h-3.5 w-3.5" />
+                <span>CALL (BULLISH)</span>
+              </span>
             </button>
             <button
               type="button"
               onClick={() => setOptionType('put')}
-              className={`py-2 text-xs font-mono font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              className={`relative py-2 text-xs font-mono font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
                 optionType === 'put'
-                  ? 'bg-rose-500 text-white shadow-md'
+                  ? 'text-white'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <TrendingDown className="h-3.5 w-3.5" />
-              <span>PUT (BEARISH)</span>
+              {optionType === 'put' && (
+                <motion.div
+                  layoutId="optionTypeIndicator"
+                  className="absolute inset-0 rounded-lg bg-rose-500 shadow-md z-0"
+                  transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                <TrendingDown className="h-3.5 w-3.5" />
+                <span>PUT (BEARISH)</span>
+              </span>
             </button>
           </div>
 
@@ -471,11 +494,14 @@ export default function OptionsPage() {
                   const isITM = optionType === 'call' ? spotPrice > strike : spotPrice < strike
 
                   return (
-                    <button
+                    <motion.button
                       key={strike}
                       type="button"
+                      whileHover={{ scale: isSelected ? 1.05 : 1.02 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ type: 'spring', stiffness: 450, damping: 20 }}
                       onClick={() => setChosenStrike(strike)}
-                      className={`py-2 px-3.5 text-xs font-mono font-bold rounded-xl border transition-all text-center shrink-0 min-w-[90px] ${
+                      className={`py-2 px-3.5 text-xs font-mono font-bold rounded-xl border transition-colors text-center shrink-0 min-w-[90px] cursor-pointer ${
                         isSelected
                           ? optionType === 'call'
                             ? 'bg-emerald-500 text-zinc-950 border-emerald-400 shadow-md scale-105'
@@ -491,7 +517,7 @@ export default function OptionsPage() {
                       {isATM && <div className="text-[8px] uppercase tracking-wider font-extrabold text-amber-400">ATM</div>}
                       {isITM && !isATM && <div className="text-[8px] uppercase tracking-wider font-extrabold text-emerald-400">ITM</div>}
                       {!isATM && !isITM && <div className="text-[8px] uppercase tracking-wider opacity-40">OTM</div>}
-                    </button>
+                    </motion.button>
                   )
                 })}
               </div>
@@ -505,11 +531,14 @@ export default function OptionsPage() {
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               {expiryDates.map((exp) => (
-                <button
+                <motion.button
                   key={exp.label}
                   type="button"
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: 'spring', stiffness: 450, damping: 25 }}
                   onClick={() => setSelectedExpiry(exp)}
-                  className={`text-left p-3.5 rounded-xl border text-xs font-mono transition-all ${
+                  className={`text-left p-3.5 rounded-xl border text-xs font-mono transition-colors cursor-pointer ${
                     selectedExpiry?.label === exp.label
                       ? 'border-emerald-500/40 bg-zinc-900 text-zinc-100 ring-1 ring-emerald-500/20'
                       : 'border-white/[0.06] bg-zinc-950 text-zinc-400 hover:border-zinc-700'
@@ -520,29 +549,41 @@ export default function OptionsPage() {
                   <div className="text-[10px] text-emerald-400 font-medium mt-1">
                     {(exp.T * 365).toFixed(0)} Days To Expiry
                   </div>
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Right Column: Greeks & Order Ticket */}
+        {/* Right Column: Greeks Panel & Order Ticket */}
         <div className="space-y-4">
           {pricingLoading && (
-            <div className="rounded-2xl bg-zinc-950 border border-white/[0.08] p-8 text-center text-zinc-500 text-xs font-mono flex flex-col items-center justify-center gap-2">
-              <RefreshCw className="h-5 w-5 animate-spin text-emerald-400" />
+            <div className="rounded-2xl bg-zinc-950/80 border border-white/[0.08] p-6 text-center text-zinc-500 text-xs font-mono flex items-center justify-center gap-2">
+              <RefreshCw className="h-3.5 w-3.5 animate-spin text-emerald-400" />
               <span>Computing Theoretical Greeks...</span>
             </div>
           )}
-          {pricing && !pricing.error && <GreeksPanel pricing={pricing} />}
+          <GreeksPanel pricing={pricing} />
 
-          {/* Buy Ticket */}
           <div className="rounded-2xl bg-zinc-950 border border-white/[0.08] p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)] space-y-4 font-mono">
-            <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-                Options Ticket
-              </span>
-              <span className="text-[10px] text-zinc-500">100x Multiplier</span>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-200 flex items-center justify-between pb-2 border-b border-white/[0.06]">
+              <span>Order Configuration</span>
+              <span className="text-[10px] text-zinc-500 font-normal">EUROPEAN</span>
+            </h3>
+
+            <div>
+              <label className="text-[10px] text-zinc-400 block mb-1.5 uppercase tracking-wider font-semibold">
+                Contract Lot Count
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={contracts}
+                onChange={(e) => setContracts(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-full h-10 bg-zinc-900 border border-white/[0.08] focus:border-emerald-500/40 rounded-xl px-3 text-xs font-mono text-zinc-200 outline-none"
+              />
+              <p className="text-[10px] text-zinc-500 mt-1">1 contract = 100 shares representation</p>
             </div>
 
             {selectedStrike && selectedExpiry && (
@@ -572,21 +613,6 @@ export default function OptionsPage() {
               </div>
             )}
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">
-                Contract Volume
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={contracts}
-                onChange={(e) => setContracts(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full h-10 bg-zinc-900 border border-white/[0.08] focus:border-emerald-500/40 rounded-xl px-3 text-xs font-mono text-zinc-200 outline-none"
-              />
-              <p className="text-[10px] text-zinc-500">1 contract = 100 shares representation</p>
-            </div>
-
             {pricing && !pricing.error && (
               <div className="border-t border-white/[0.06] pt-3 space-y-1.5 text-xs">
                 <div className="flex justify-between text-zinc-400">
@@ -602,11 +628,14 @@ export default function OptionsPage() {
               </div>
             )}
 
-            <button
+            <motion.button
               type="button"
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 450, damping: 20 }}
               onClick={handleBuy}
               disabled={isBuying || !pricing || !!pricing?.error || !selectedStrike || !selectedExpiry}
-              className={`w-full h-11 rounded-xl font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-40 shadow-lg flex items-center justify-center gap-2 ${
+              className={`w-full h-11 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors disabled:opacity-40 shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
                 optionType === 'call'
                   ? 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950'
                   : 'bg-rose-500 hover:bg-rose-400 text-white'
@@ -620,7 +649,7 @@ export default function OptionsPage() {
               ) : (
                 `Buy ${contracts} ${optionType.toUpperCase()} — ₹${totalPremium.toFixed(2)}`
               )}
-            </button>
+            </motion.button>
 
             <AnimatePresence>
               {buyMessage && (

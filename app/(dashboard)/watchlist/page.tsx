@@ -71,8 +71,24 @@ export default function WatchlistPage() {
 
   const errorMessage = error ? error.message || 'Connection error' : null
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05,
+        delayChildren: 0.04,
+      },
+    },
+  }
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6 max-w-7xl mx-auto"
+    >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/[0.06]">
         <div>
@@ -118,14 +134,17 @@ export default function WatchlistPage() {
           <p className="text-xs text-zinc-500 font-mono mb-5 leading-relaxed">
             Star assets from the Market Explorer to pin them here for fast execution and live price tracking.
           </p>
-          <button
+          <motion.button
             type="button"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 20 }}
             onClick={() => router.push('/market')}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-mono font-bold text-xs transition-all shadow-md"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-mono font-bold text-xs transition-colors shadow-md cursor-pointer"
           >
             <span>Explore 150 Assets</span>
             <ArrowRight className="h-3.5 w-3.5" />
-          </button>
+          </motion.button>
         </motion.div>
       ) : (
         <div className="rounded-2xl border border-white/[0.08] bg-zinc-950/80 overflow-hidden shadow-[0_4px_24px_-4px_rgba(0,0,0,0.6)]">
@@ -195,29 +214,35 @@ export default function WatchlistPage() {
 
                         <td className="py-3.5 px-5 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button
+                            <motion.button
                               type="button"
+                              whileHover={{ scale: 1.15 }}
+                              whileTap={{ scale: 0.85, rotate: -15 }}
+                              transition={{ type: 'spring', stiffness: 500, damping: 20 }}
                               disabled={toggling === item.symbol}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleRemove(item.symbol, item.asset_type)
                               }}
-                              className="p-1.5 rounded-lg hover:bg-zinc-800 text-amber-400 transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-zinc-800 text-amber-400 transition-colors cursor-pointer"
                               title="Unpin from Watchlist"
                             >
                               <Star className="h-4 w-4 fill-amber-400" />
-                            </button>
-                            <button
+                            </motion.button>
+                            <motion.button
                               type="button"
+                              whileHover={{ scale: 1.04 }}
+                              whileTap={{ scale: 0.95 }}
+                              transition={{ type: 'spring', stiffness: 450, damping: 22 }}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 router.push(`/market/${item.symbol}?type=${item.asset_type}`)
                               }}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-emerald-500 hover:text-zinc-950 text-zinc-300 border border-white/[0.08] hover:border-emerald-400 text-xs font-mono font-bold transition-all shadow-sm"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-emerald-500 hover:text-zinc-950 text-zinc-300 border border-white/[0.08] hover:border-emerald-400 text-xs font-mono font-bold transition-all shadow-sm cursor-pointer"
                             >
                               <span>Trade</span>
                               <ArrowRight className="h-3 w-3" />
-                            </button>
+                            </motion.button>
                           </div>
                         </td>
                       </motion.tr>
@@ -229,6 +254,6 @@ export default function WatchlistPage() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }

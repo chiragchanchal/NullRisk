@@ -3,6 +3,7 @@
 import useSWR from 'swr'
 import { Clock, Copy, RefreshCw, Crown } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 
 interface LeaderboardUser {
   user_id: string
@@ -12,6 +13,30 @@ interface LeaderboardUser {
 }
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.06,
+      delayChildren: 0.05,
+    },
+  },
+}
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: 'spring' as const,
+      stiffness: 360,
+      damping: 26,
+    },
+  },
+}
 
 export default function LeaderboardPage() {
   const { data: leaderboard, error, isLoading } = useSWR('/api/leaderboard', fetcher, {
@@ -85,7 +110,12 @@ export default function LeaderboardPage() {
   const top3 = leaderboard.slice(0, 3)
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6 max-w-7xl mx-auto"
+    >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/[0.06]">
         <div>
@@ -127,8 +157,10 @@ export default function LeaderboardPage() {
             const badgeText = isFirst ? '🥇 RANK 1' : isSecond ? '🥈 RANK 2' : '🥉 RANK 3'
 
             return (
-              <div
+              <motion.div
                 key={trader.user_id}
+                variants={cardVariants}
+                whileHover={{ y: -4, transition: { type: 'spring', stiffness: 400, damping: 25 } }}
                 className={`rounded-2xl p-5 border bg-gradient-to-b ${badgeColor} bg-zinc-950/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.6)] flex flex-col justify-between space-y-4`}
               >
                 <div className="flex items-start justify-between">
@@ -175,11 +207,14 @@ export default function LeaderboardPage() {
                   </span>
                 </div>
 
-                <button
+                <motion.button
                   type="button"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ type: 'spring', stiffness: 450, damping: 20 }}
                   onClick={() => handleCopyTrader(trader.user_id)}
                   disabled={isCopying === trader.user_id}
-                  className="w-full h-9 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-white/[0.08] text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-40"
+                  className="w-full h-9 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-white/[0.08] text-xs font-mono font-bold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-40 cursor-pointer"
                 >
                   {isCopying === trader.user_id ? (
                     <>
@@ -192,8 +227,8 @@ export default function LeaderboardPage() {
                       Replicate Portfolio
                     </>
                   )}
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
             )
           })}
         </div>
@@ -218,7 +253,11 @@ export default function LeaderboardPage() {
                 const isPositiveWeekly = user.weekly_return_pct >= 0
 
                 return (
-                  <tr key={user.user_id} className="hover:bg-zinc-900/40 transition-colors">
+                  <motion.tr
+                    key={user.user_id}
+                    variants={cardVariants}
+                    className="hover:bg-zinc-900/50 transition-colors"
+                  >
                     <td className="py-3.5 px-5 text-center font-mono font-bold text-xs text-zinc-400">
                       {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
                     </td>
@@ -249,11 +288,14 @@ export default function LeaderboardPage() {
                       {Number(user.total_return_pct).toFixed(2)}%
                     </td>
                     <td className="py-3.5 px-5 text-right">
-                      <button
+                      <motion.button
                         type="button"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.94 }}
+                        transition={{ type: 'spring', stiffness: 450, damping: 20 }}
                         onClick={() => handleCopyTrader(user.user_id)}
                         disabled={isCopying === user.user_id}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/[0.08] text-xs font-mono font-semibold transition-all disabled:opacity-40"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/[0.08] text-xs font-mono font-semibold transition-colors disabled:opacity-40 cursor-pointer"
                       >
                         {isCopying === user.user_id ? (
                           <>
@@ -266,9 +308,9 @@ export default function LeaderboardPage() {
                             Copy
                           </>
                         )}
-                      </button>
+                      </motion.button>
                     </td>
-                  </tr>
+                  </motion.tr>
                 )
               })}
 
@@ -283,6 +325,6 @@ export default function LeaderboardPage() {
           </table>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

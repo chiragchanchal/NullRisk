@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import {
   LayoutDashboard,
   Briefcase,
@@ -41,9 +42,13 @@ export function Sidebar() {
       <div className="p-5 pb-4 border-b border-white/[0.06]">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/40 transition-all shadow-[0_0_15px_-3px_rgba(16,185,129,0.2)]">
+            <motion.div
+              whileHover={{ rotate: [-3, 3, 0], scale: 1.06 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/40 transition-colors shadow-[0_0_15px_-3px_rgba(16,185,129,0.2)]"
+            >
               <Shield className="h-4 w-4" />
-            </div>
+            </motion.div>
             <div className="flex flex-col">
               <span className="text-base font-bold tracking-tight text-zinc-100 flex items-center gap-1.5 font-sans">
                 NullRisk
@@ -69,42 +74,58 @@ export function Sidebar() {
           const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
           const Icon = item.icon
           return (
-            <Link
+            <motion.div
               key={item.name}
-              href={item.href}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all group ${
-                isActive
-                  ? 'bg-zinc-800/80 text-zinc-100 ring-1 ring-white/10 shadow-[0_1px_10px_-2px_rgba(0,0,0,0.5)]'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60'
-              }`}
+              whileHover={{ x: 2 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
             >
-              <div className="flex items-center gap-3">
-                <Icon
-                  className={`h-4 w-4 transition-colors ${
-                    isActive ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300'
-                  }`}
-                />
-                <span className="tracking-wide">{item.name}</span>
-              </div>
-              <span
-                className={`text-[9px] font-mono px-1.5 py-0.5 rounded transition-colors ${
+              <Link
+                href={item.href}
+                className={`relative flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-colors group ${
                   isActive
-                    ? 'text-zinc-400 bg-zinc-900/80 border border-white/[0.06]'
-                    : 'text-zinc-600 group-hover:text-zinc-400'
+                    ? 'text-zinc-100'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40'
                 }`}
               >
-                {item.shortcut}
-              </span>
-            </Link>
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebarActivePill"
+                    className="absolute inset-0 rounded-lg bg-zinc-800/90 ring-1 ring-white/10 shadow-[0_1px_12px_-2px_rgba(0,0,0,0.5)] z-0"
+                    transition={{ type: 'spring', stiffness: 450, damping: 34 }}
+                  />
+                )}
+                <div className="relative z-10 flex items-center gap-3">
+                  <Icon
+                    className={`h-4 w-4 transition-colors ${
+                      isActive ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-zinc-300'
+                    }`}
+                  />
+                  <span className="tracking-wide font-medium">{item.name}</span>
+                </div>
+                <span
+                  className={`relative z-10 text-[9px] font-mono px-1.5 py-0.5 rounded transition-colors ${
+                    isActive
+                      ? 'text-zinc-300 bg-zinc-900/90 border border-white/[0.08]'
+                      : 'text-zinc-600 group-hover:text-zinc-400'
+                  }`}
+                >
+                  {item.shortcut}
+                </span>
+              </Link>
+            </motion.div>
           )
         })}
       </nav>
 
       {/* Bottom Profile & Actions */}
       <div className="p-3 border-t border-white/[0.06] space-y-1 bg-zinc-950/40">
-        <button
+        <motion.button
           type="button"
-          className="flex items-center justify-between px-3 py-2 w-full rounded-lg text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60 transition-colors group"
+          whileHover={{ x: 2 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+          className="flex items-center justify-between px-3 py-2 w-full rounded-lg text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60 transition-colors group cursor-pointer"
           onClick={() => window.dispatchEvent(new Event('open-settings'))}
         >
           <div className="flex items-center gap-3">
@@ -112,16 +133,19 @@ export function Sidebar() {
             <span className="tracking-wide">Settings</span>
           </div>
           <span className="text-[9px] font-mono text-zinc-600 group-hover:text-zinc-400">⌘,</span>
-        </button>
+        </motion.button>
 
-        <button
+        <motion.button
           type="button"
+          whileHover={{ x: 2 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-xs text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors group"
+          className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-xs text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors group cursor-pointer"
         >
           <LogOut className="h-4 w-4 text-zinc-600 group-hover:text-rose-400" />
           <span className="tracking-wide">Log Out</span>
-        </button>
+        </motion.button>
       </div>
     </aside>
   )
