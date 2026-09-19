@@ -12,15 +12,15 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { symbol, assetType, quantity: rawQuantity, orderType, orderClass = 'market', limitPrice: rawLimitPrice } = body
+    const { symbol: rawSymbol, assetType, quantity: rawQuantity, orderType, orderClass = 'market', limitPrice: rawLimitPrice } = body
 
     const quantity = Number(rawQuantity)
     const limitPrice = rawLimitPrice !== undefined ? Number(rawLimitPrice) : undefined
 
     if (
-      !symbol ||
-      typeof symbol !== 'string' ||
-      !/^[A-Za-z0-9.\/]{1,15}$/.test(symbol) ||
+      !rawSymbol ||
+      typeof rawSymbol !== 'string' ||
+      !/^[A-Za-z0-9.\/_\-]{1,35}$/.test(rawSymbol) ||
       !assetType ||
       !['stock', 'crypto', 'forex'].includes(assetType) ||
       typeof quantity !== 'number' ||
@@ -33,6 +33,13 @@ export async function POST(req: NextRequest) {
     ) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
     }
+
+    // Clean any accidental redundant category prefixes like 'stock/crypto/BTC' or 'crypto/BTC'
+    const cleanSymbol = rawSymbol
+      .replace(/^(stock|crypto|forex)\//i, '')
+      .replace(/^(stock|crypto|forex)\//i, '')
+      .trim()
+    const symbol = cleanSymbol || rawSymbol.trim()
 
     if (orderClass === 'limit' && (!limitPrice || isNaN(limitPrice) || !isFinite(limitPrice) || limitPrice <= 0)) {
       return NextResponse.json({ error: 'Limit orders require a valid positive limit price' }, { status: 400 })
@@ -74,13 +81,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     }
 
-    // 3. Get existing Holding
-    const { data: existingHolding } = await adminClient
+    // 3. Get existing Holding (supports exact symbol and legacy prefixes)
+    let existingHolding: Record<string, unknown> | null = null
+    const { data: exactHolding } = await adminClient
       .from('holdings')
       .select('*')
       .eq('user_id', user.id)
       .eq('symbol', symbol)
-      .single()
+      .maybeSingle()
+
+    if (exactHolding) {
+      existingHolding = exactHolding
+    } else {
+      // Fallback: check if the user has a holding with the raw symbol or legacy prefix (e.g. 'crypto/BTC')
+      const { data: userHoldings } = await adminClient
+        .from('holdings')
+        .select('*')
+        .eq('user_id', user.id)
+
+      if (userHoldings && userHoldings.length > 0) {
+        existingHolding = userHoldings.find((h: Record<string, unknown>) => {
+          const symStr = String(h.symbol || '')
+          const hClean = symStr.replace(/^(stock|crypto|forex)\//i, '').replace(/^(stock|crypto|forex)\//i, '').trim().toLowerCase()
+          return hClean === symbol.toLowerCase() || symStr === rawSymbol || symStr.toLowerCase() === symbol.toLowerCase()
+        }) || null
+      }
+    }
 
     // 4. Handle Pre-Validation
     if (orderType === 'buy') {
@@ -88,7 +114,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Insufficient funds' }, { status: 400 })
       }
     } else if (orderType === 'sell') {
-      if (!existingHolding || existingHolding.quantity < quantity) {
+      if (!existingHolding || Number(existingHolding.quantity) < quantity) {
         return NextResponse.json({ error: 'Insufficient holdings to sell' }, { status: 400 })
       }
     }

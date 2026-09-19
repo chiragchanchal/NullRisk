@@ -13,11 +13,30 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function AssetDetail({ params }: { params: Promise<{ symbol: string[] }> }) {
   const resolvedParams = use(params)
-  const symbol = Array.isArray(resolvedParams.symbol)
-    ? resolvedParams.symbol.map(decodeURIComponent).join('/')
-    : decodeURIComponent(resolvedParams.symbol || '')
   const searchParams = useSearchParams()
-  const assetType = searchParams.get('type') || 'stock'
+
+  const rawSegments = Array.isArray(resolvedParams.symbol)
+    ? resolvedParams.symbol.map(decodeURIComponent)
+    : [decodeURIComponent(resolvedParams.symbol || '')]
+
+  // Detect and filter out redundant category segments ('stock', 'crypto', 'forex')
+  let inferredType: string | null = null
+  const cleanSegments: string[] = []
+
+  for (const seg of rawSegments) {
+    const lower = seg.toLowerCase().trim()
+    if (['stock', 'crypto', 'forex'].includes(lower)) {
+      inferredType = lower
+    } else {
+      const cleaned = seg.replace(/^(stock|crypto|forex)\//i, '').replace(/^(stock|crypto|forex)\//i, '').trim()
+      if (cleaned) {
+        cleanSegments.push(cleaned)
+      }
+    }
+  }
+
+  const symbol = cleanSegments.join('/') || rawSegments[rawSegments.length - 1] || 'BTC'
+  const assetType = (searchParams.get('type') || inferredType || 'stock').toLowerCase()
   const router = useRouter()
 
   const [orderType, setOrderType] = useState<'buy' | 'sell'>('buy')

@@ -437,21 +437,22 @@ export default function PortfolioPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {summary.holdings.map((holding: PortfolioHolding) => {
                 const isPositive = holding.unrealisedPnLPct >= 0
+                const cleanSym = holding.symbol.replace(/^(stock|crypto|forex)\//i, '').replace(/^(stock|crypto|forex)\//i, '').trim()
                 return (
                   <motion.div
                     key={holding.id}
                     variants={cardVariants}
                     whileHover={{ y: -3, transition: { type: 'spring', stiffness: 450, damping: 25 } }}
                     whileTap={{ scale: 0.99 }}
-                    onClick={() => router.push(`/market/${holding.asset_type}/${holding.symbol}`)}
+                    onClick={() => router.push(`/market/${cleanSym}?type=${holding.asset_type}`)}
                     className="p-5 rounded-2xl bg-zinc-950/80 hover:bg-zinc-900/90 border border-white/[0.08] hover:border-zinc-700 transition-colors cursor-pointer group shadow-[0_2px_12px_-2px_rgba(0,0,0,0.5)] flex flex-col justify-between"
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
-                        <AssetLogo symbol={holding.symbol} type={holding.asset_type} size={40} />
+                        <AssetLogo symbol={cleanSym} type={holding.asset_type} size={40} />
                         <div>
                           <h3 className="font-mono font-bold text-base text-zinc-100 group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
-                            {holding.symbol}
+                            {cleanSym}
                             <ArrowUpRight className="h-3.5 w-3.5 text-zinc-600 group-hover:text-emerald-400 transition-colors" />
                           </h3>
                           <p className="text-[10px] font-mono text-zinc-500 uppercase">
